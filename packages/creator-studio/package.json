@@ -1,0 +1,11 @@
+{
+  "name": "@mont-templates/creator-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo \"TODO: build creator studio\"",
+    "check": "echo \"TODO: check creator studio\"",
+    "test": "echo \"TODO: test creator studio\""
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@mont-templates/showcase",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo \"TODO: build static showcase\"",
+    "check": "echo \"TODO: check showcase\"",
+    "test": "echo \"TODO: test showcase\""
+  }
+}

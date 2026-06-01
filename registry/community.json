@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "schemaVersion": 1,
+      "id": "product-demo-card",
+      "title": "Product Demo Card",
+      "kind": "scene",
+      "category": "product",
+      "tags": [
+        "demo",
+        "browser",
+        "cta",
+        "cursor"
+      ],
+      "license": "Apache-2.0",
+      "author": "Mont",
+      "reviewStatus": "approved",
+      "ipRisk": "generic",
+      "publishToShowcase": true,
+      "settings": [
+        "headline",
+        "primary",
+        "accent",
+        "ctaLabel",
+        "metricValue",
+        "ctaFrame",
+        "cursorStart",
+        "cursorClick"
+      ],
+      "tokens": [
+        "backdrop",
+        "ctaFill",
+        "ctaGlow",
+        "metricSurface",
+        "metricText"
+      ],
+      "thirdPartyAssets": [],
+      "preview": {
+        "thumbnail": "thumbnail.png",
+        "video": "preview.mp4"
+      },
+      "path": "templates/scenes/product-demo-card/manifest.json"
+    }
+  ]
+}
