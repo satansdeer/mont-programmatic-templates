@@ -224,6 +224,9 @@ function drawVisual(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
     case 'model3d':
       drawMediaPlaceholder(context, visual, '3D');
       break;
+    case 'group':
+      drawGroup(context, visual);
+      break;
     default:
       drawMediaPlaceholder(context, visual, visual.type);
       break;
@@ -233,6 +236,17 @@ function drawVisual(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
     for (const child of visual.children) drawVisual(context, child);
   }
   context.restore();
+}
+
+function drawGroup(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
+  const proceduralKind = literalString(visualAttribute(visual, 'proceduralKind'), '');
+  if (proceduralKind === 'mesh2d') {
+    drawProceduralMesh2d(context, visual);
+  } else if (proceduralKind === 'scene3d') {
+    drawProceduralScene3d(context, visual);
+  } else if (proceduralKind === 'shader') {
+    drawProceduralShaderOverlay(context, visual);
+  }
 }
 
 function applyEffects(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
@@ -367,6 +381,110 @@ function drawCursor(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
   context.stroke();
 }
 
+function drawProceduralMesh2d(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
+  const offsetX = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const offsetY = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const triangles = literalArray(visualAttribute(visual, 'triangles'));
+  for (const rawTriangle of triangles) {
+    const triangle = literalRecord(rawTriangle);
+    const points = literalArray(triangle.points).map((point) => point2d(point));
+    if (points.length < 3) continue;
+    context.save();
+    context.globalAlpha *= Math.max(0, Math.min(1, finiteNumber(triangle.opacity, 1)));
+    context.beginPath();
+    context.moveTo(offsetX + points[0].x, offsetY + points[0].y);
+    context.lineTo(offsetX + points[1].x, offsetY + points[1].y);
+    context.lineTo(offsetX + points[2].x, offsetY + points[2].y);
+    context.closePath();
+    const fill = literalString(triangle.fill, 'transparent');
+    if (fill !== 'none' && fill !== 'transparent') {
+      context.fillStyle = fill;
+      context.fill();
+    }
+    const stroke = literalString(triangle.stroke, '');
+    const strokeWidth = finiteNumber(triangle.strokeWidth, 0);
+    if (stroke && stroke !== 'none' && strokeWidth > 0) {
+      context.strokeStyle = stroke;
+      context.lineWidth = strokeWidth;
+      context.stroke();
+    }
+    context.restore();
+  }
+}
+
+function drawProceduralScene3d(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), 640);
+  const height = finiteNumber(visualAttribute(visual, 'height'), 360);
+  const objects = literalArray(visualAttribute(visual, 'objects'))
+    .map((object) => literalRecord(object))
+    .sort((left, right) => finiteNumber(left.z, 0) - finiteNumber(right.z, 0));
+  const origin = { x: x + width / 2, y: y + height / 2 };
+
+  for (const object of objects) {
+    const projected = projectIso(
+      origin,
+      finiteNumber(object.x, 0),
+      finiteNumber(object.y, 0),
+      finiteNumber(object.z, 0)
+    );
+    const fill = literalString(object.fill, '#94a3b8');
+    const stroke = literalString(object.stroke, 'rgba(15, 23, 42, 0.28)');
+    context.save();
+    context.globalAlpha *= Math.max(0, Math.min(1, finiteNumber(object.opacity, 1)));
+    if (literalString(object.kind, 'box') === 'sphere') {
+      context.beginPath();
+      context.ellipse(
+        projected.x,
+        projected.y,
+        Math.max(4, finiteNumber(object.radius, 42) * 0.9),
+        Math.max(4, finiteNumber(object.radius, 42) * 0.56),
+        0,
+        0,
+        Math.PI * 2
+      );
+      context.fillStyle = fill;
+      context.fill();
+      context.strokeStyle = stroke;
+      context.lineWidth = 1.5;
+      context.stroke();
+    } else {
+      drawIsoBox(
+        context,
+        projected.x,
+        projected.y,
+        finiteNumber(object.width, 80),
+        finiteNumber(object.height, 80),
+        finiteNumber(object.depth, 80),
+        fill,
+        stroke
+      );
+    }
+    context.restore();
+  }
+}
+
+function drawProceduralShaderOverlay(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), 640);
+  const height = finiteNumber(visualAttribute(visual, 'height'), 360);
+  context.save();
+  context.globalCompositeOperation = 'screen';
+  context.globalAlpha *= 0.22;
+  for (let row = 0; row < height; row += 12) {
+    context.fillStyle = row % 24 === 0 ? '#67e8f9' : '#f0abfc';
+    context.fillRect(x, y + row, width, 2);
+  }
+  context.globalAlpha *= 0.6;
+  context.fillStyle = '#f43f5e';
+  context.fillRect(x + 10, y, 2, height);
+  context.fillStyle = '#22d3ee';
+  context.fillRect(x + width - 12, y, 2, height);
+  context.restore();
+}
+
 function drawMediaPlaceholder(context: CanvasRenderingContext2D, visual: ProgrammaticVisual, label: string): void {
   const x = finiteNumber(visualAttribute(visual, 'x'), 0);
   const y = finiteNumber(visualAttribute(visual, 'y'), 0);
@@ -495,6 +613,77 @@ function drawArrowHead(context: CanvasRenderingContext2D, from: Point, to: Point
   context.fill();
 }
 
+function projectIso(origin: Point, x: number, y: number, z: number): Point {
+  return {
+    x: origin.x + x - z * 0.52,
+    y: origin.y + y * 0.72 + z * 0.32
+  };
+}
+
+function drawIsoBox(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  depth: number,
+  fill: string,
+  stroke: string
+): void {
+  const halfWidth = Math.max(4, width / 2);
+  const halfHeight = Math.max(4, height / 2);
+  const depthX = Math.max(4, depth * 0.38);
+  const depthY = Math.max(4, depth * 0.24);
+  const front = [
+    { x: x - halfWidth, y: y - halfHeight },
+    { x: x + halfWidth, y: y - halfHeight },
+    { x: x + halfWidth, y: y + halfHeight },
+    { x: x - halfWidth, y: y + halfHeight }
+  ];
+  const top = [
+    { x: x - halfWidth, y: y - halfHeight },
+    { x: x - halfWidth + depthX, y: y - halfHeight - depthY },
+    { x: x + halfWidth + depthX, y: y - halfHeight - depthY },
+    { x: x + halfWidth, y: y - halfHeight }
+  ];
+  const side = [
+    { x: x + halfWidth, y: y - halfHeight },
+    { x: x + halfWidth + depthX, y: y - halfHeight - depthY },
+    { x: x + halfWidth + depthX, y: y + halfHeight - depthY },
+    { x: x + halfWidth, y: y + halfHeight }
+  ];
+  fillPolygon(context, top, tintColor(fill, 0.18), stroke);
+  fillPolygon(context, side, tintColor(fill, -0.18), stroke);
+  fillPolygon(context, front, fill, stroke);
+}
+
+function fillPolygon(context: CanvasRenderingContext2D, points: Point[], fill: string, stroke: string): void {
+  context.beginPath();
+  points.forEach((point, index) => {
+    if (index === 0) context.moveTo(point.x, point.y);
+    else context.lineTo(point.x, point.y);
+  });
+  context.closePath();
+  context.fillStyle = fill;
+  context.fill();
+  if (stroke && stroke !== 'none') {
+    context.strokeStyle = stroke;
+    context.lineWidth = 1.5;
+    context.stroke();
+  }
+}
+
+function tintColor(color: string, amount: number): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!match) return color;
+  const value = Number.parseInt(match[1], 16);
+  const channel = (shift: number) => Math.max(0, Math.min(255, ((value >> shift) & 0xff) + amount * 255));
+  const red = Math.round(channel(16)).toString(16).padStart(2, '0');
+  const green = Math.round(channel(8)).toString(16).padStart(2, '0');
+  const blue = Math.round(channel(0)).toString(16).padStart(2, '0');
+  return `#${red}${green}${blue}`;
+}
+
 function visualOrigin(visual: ProgrammaticVisual | undefined): Point {
   if (!visual) return { x: 0, y: 0 };
   return {
@@ -505,6 +694,24 @@ function visualOrigin(visual: ProgrammaticVisual | undefined): Point {
 
 function literalRecord(value: ProgrammaticSpanLiteral): Record<string, ProgrammaticSpanLiteral> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function literalArray(value: ProgrammaticSpanLiteral | undefined): ProgrammaticSpanLiteral[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function point2d(value: ProgrammaticSpanLiteral): Point {
+  if (Array.isArray(value)) {
+    return {
+      x: finiteNumber(value[0], 0),
+      y: finiteNumber(value[1], 0)
+    };
+  }
+  const record = literalRecord(value);
+  return {
+    x: finiteNumber(record.x, 0),
+    y: finiteNumber(record.y, 0)
+  };
 }
 
 function literalString(value: ProgrammaticSpanLiteral | undefined, fallback: string): string {

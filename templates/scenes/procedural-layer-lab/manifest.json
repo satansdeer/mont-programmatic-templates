@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "procedural-layer-lab",
+  "title": "Procedural Layer Lab",
+  "kind": "scene",
+  "category": "procedural",
+  "tags": ["procedural", "mesh", "3d", "shader", "wgsl"],
+  "license": "Apache-2.0",
+  "author": "Mont",
+  "reviewStatus": "approved",
+  "ipRisk": "generic",
+  "publishToShowcase": true,
+  "settings": ["title", "primary", "secondary", "meshDepth", "shaderAmount"],
+  "tokens": ["backdrop", "surfaceA", "surfaceB", "block", "glow", "ink"],
+  "thirdPartyAssets": [],
+  "preview": {
+    "thumbnail": "thumbnail.png",
+    "video": "preview.mp4"
+  }
+}

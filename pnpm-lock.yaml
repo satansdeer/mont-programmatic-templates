@@ -618,7 +618,7 @@ packages:
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
   '@usemont/programmatic-spans@file:vendor/usemont-packages/usemont-programmatic-spans-0.0.0.tgz':
-    resolution: {integrity: sha512-VkRJzXvFNqN8/NtUVV0F/CRxlk7uv9Ouq37S8zspGInL4m4hDtr8HWNfqaW1Jtswjzdc2nhOlK+xipqdhrTW3g==, tarball: file:vendor/usemont-packages/usemont-programmatic-spans-0.0.0.tgz}
+    resolution: {integrity: sha512-sA9uZWpEQcbPMJsiuc80nV31igPIp/wkhc5XbnAdwWIR9X2Ji1GWhcFnO3b+x9Olzbz5kx3Tb3tw+8P6NeGWqw==, tarball: file:vendor/usemont-packages/usemont-programmatic-spans-0.0.0.tgz}
     version: 0.0.0
 
   '@usemont/scene-model@file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz':
