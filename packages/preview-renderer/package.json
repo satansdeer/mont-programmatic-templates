@@ -4,8 +4,19 @@
   "type": "module",
   "main": "./dist/preview-renderer/src/index.js",
   "types": "./dist/preview-renderer/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/preview-renderer/src/index.d.ts",
+      "default": "./dist/preview-renderer/src/index.js"
+    },
+    "./TemplatePlayerControls.svelte": {
+      "svelte": "./src/TemplatePlayerControls.svelte",
+      "default": "./src/TemplatePlayerControls.svelte"
+    }
+  },
   "files": [
-    "dist"
+    "dist",
+    "src/TemplatePlayerControls.svelte"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json --emitDeclarationOnly false",
@@ -15,6 +26,9 @@
   "dependencies": {
     "@mont-templates/runtime": "workspace:*",
     "@usemont/scene-model": "file:../../vendor/usemont-packages/usemont-scene-model-0.0.0.tgz"
+  },
+  "peerDependencies": {
+    "svelte": "^5.39.3"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

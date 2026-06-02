@@ -1,13 +1,6 @@
 <script lang="ts">
-  import {
-    compileProgrammaticSpanTsx,
-    createDefaultProgrammaticSpanSettings,
-    ensureProgrammaticSpanLayoutEngineReady,
-    evaluateProgrammaticSpanFrame,
-    type CommunityRegistry,
-    type ProgrammaticSpanSpec
-  } from '@mont-templates/runtime';
-  import { drawProgrammaticFrameToCanvas } from '@mont-templates/preview-renderer';
+  import { type CommunityRegistry } from '@mont-templates/runtime';
+  import TemplateCard from './TemplateCard.svelte';
   import registry from '../../../registry/community.json';
   import readme from '../../../README.md?raw';
   import authoring from '../../../docs/authoring.md?raw';
@@ -28,7 +21,6 @@
   ];
 
   const communityRegistry = registry as CommunityRegistry;
-  const layoutEngineReadyPromise = ensureProgrammaticSpanLayoutEngineReady();
 
   const templates = communityRegistry.templates
     .filter((template) => template.publishToShowcase && template.reviewStatus === 'approved' && template.ipRisk === 'generic')
@@ -38,33 +30,11 @@
       return {
         ...template,
         templatePath,
-        source: templateSourceModules[`../../../${templatePath}`] ?? ''
+        source: templateSourceModules[`../../../${templatePath}`] ?? '',
+        sourceUrl: githubSourceUrl(templatePath),
+        studioUrl: studioUrl(template.id)
       };
     });
-
-  function preview(node: HTMLCanvasElement, source: string) {
-    drawPreview(node, source);
-    void layoutEngineReadyPromise.then(() => drawPreview(node, source));
-    return {
-      update(nextSource: string) {
-        drawPreview(node, nextSource);
-        void layoutEngineReadyPromise.then(() => drawPreview(node, nextSource));
-      }
-    };
-  }
-
-  function drawPreview(canvas: HTMLCanvasElement, source: string): void {
-    const result = compileProgrammaticSpanTsx(source);
-    const spec: ProgrammaticSpanSpec | null = result.spec;
-    if (!spec) return;
-    const settings = createDefaultProgrammaticSpanSettings(spec.settings);
-    const frame = evaluateProgrammaticSpanFrame(spec, spec.editModeTimeMs, {}, settings);
-    drawProgrammaticFrameToCanvas(canvas, frame.visuals, {
-      width: spec.width,
-      height: spec.height,
-      background: '#0f172a'
-    });
-  }
 
   function githubSourceUrl(path: string): string {
     return `https://github.com/satansdeer/mont-programmatic-templates/blob/main/${path}`;
@@ -113,26 +83,7 @@
     </div>
     <div class="template-grid">
       {#each templates as template}
-        <article class="template-card">
-          <div class="preview-frame">
-            <canvas use:preview={template.source} aria-label={`${template.title} preview`}></canvas>
-          </div>
-          <div class="template-body">
-            <div>
-              <h3>{template.title}</h3>
-              <p>{template.category} · {template.kind}</p>
-            </div>
-            <div class="tag-row">
-              {#each template.tags as tag}
-                <span>{tag}</span>
-              {/each}
-            </div>
-            <div class="template-actions">
-              <a href={githubSourceUrl(template.templatePath)}>Source</a>
-              <a href={studioUrl(template.id)}>Open in Studio</a>
-            </div>
-          </div>
-        </article>
+        <TemplateCard {template} />
       {/each}
     </div>
   </section>

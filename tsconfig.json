@@ -10,6 +10,9 @@
     "paths": {
       "@mont-templates/runtime": ["packages/runtime/src/index.ts"],
       "@mont-templates/preview-renderer": ["packages/preview-renderer/src/index.ts"],
+      "@mont-templates/preview-renderer/TemplatePlayerControls.svelte": [
+        "packages/preview-renderer/src/TemplatePlayerControls.svelte"
+      ],
       "@mont-templates/template-sdk": ["packages/template-sdk/src/index.ts"]
     }
   }

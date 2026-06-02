@@ -155,6 +155,11 @@ h1 {
 
 .preview {
   grid-template-rows: auto minmax(0, 1fr) auto;
+  --template-player-accent: #14b8a6;
+  --template-player-border: #3f3f46;
+  --template-player-button-bg: #27272a;
+  --template-player-track: #3f3f46;
+  --template-player-muted: #a8a29e;
 }
 
 .panel-header {
@@ -381,18 +386,9 @@ canvas {
 }
 
 .transport {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
+  display: flex;
   padding: 12px;
   border-top: 1px solid #3f3f46;
-  color: #a8a29e;
-  font-size: 13px;
-}
-
-.transport input {
-  width: 100%;
 }
 
 @media (max-width: 980px) {

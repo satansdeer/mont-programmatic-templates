@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     compileProgrammaticSpanTsx,
     createDefaultProgrammaticSpanSettings,
@@ -19,6 +19,7 @@
     drawProgrammaticFrameToCanvas,
     type ProgrammaticEditOverlayHandle
   } from '@mont-templates/preview-renderer';
+  import TemplatePlayerControls from '@mont-templates/preview-renderer/TemplatePlayerControls.svelte';
   import { assertBrandSafeManifest, type TemplateManifest } from '@mont-templates/template-sdk';
   import registry from '../../../registry/community.json';
 
@@ -72,8 +73,6 @@
   let canvas: HTMLCanvasElement;
   let overlaySvg: SVGSVGElement;
   let dragState: DragState | null = null;
-  let animationFrame = 0;
-  let lastFrameTime = 0;
   let layoutEngineReady = false;
   let layoutEngineError = '';
 
@@ -157,24 +156,6 @@
   function updateSettingField(id: string, field: string, value: number): void {
     const current = literalRecord(settings[id]);
     updateSetting(id, { ...current, [field]: value });
-  }
-
-  function togglePlayback(): void {
-    playing = !playing;
-    if (playing) {
-      lastFrameTime = performance.now();
-      animationFrame = requestAnimationFrame(stepPlayback);
-    } else {
-      cancelAnimationFrame(animationFrame);
-    }
-  }
-
-  function stepPlayback(now: number): void {
-    if (!playing || !spec) return;
-    const delta = now - lastFrameTime;
-    lastFrameTime = now;
-    playheadMs = (playheadMs + delta) % spec.durationMs;
-    animationFrame = requestAnimationFrame(stepPlayback);
   }
 
   async function saveTemplate(): Promise<void> {
@@ -286,8 +267,6 @@
   function formatSeconds(ms: number): string {
     return `${(ms / 1000).toFixed(2)}s`;
   }
-
-  onDestroy(() => cancelAnimationFrame(animationFrame));
 </script>
 
 <svelte:head>
@@ -429,7 +408,6 @@
     <section class="preview" aria-label="Template preview">
       <div class="panel-header">
         <strong>Preview</strong>
-        <button type="button" on:click={togglePlayback}>{playing ? 'Pause' : 'Play'}</button>
       </div>
       <div class="stage-shell">
         <div class="stage" style={`aspect-ratio: ${spec?.width ?? 16} / ${spec?.height ?? 9};`}>
@@ -499,16 +477,13 @@
         </div>
       </div>
       <div class="transport">
-        <span>{formatSeconds(playheadMs)}</span>
-        <input
-          type="range"
-          min="0"
-          max={spec?.durationMs ?? 1}
-          step="16"
-          bind:value={playheadMs}
-          aria-label="Playhead"
+        <TemplatePlayerControls
+          bind:playheadMs
+          bind:playing
+          durationMs={spec?.durationMs ?? 1}
+          disabled={!spec}
+          loop
         />
-        <span>{formatSeconds(spec?.durationMs ?? 0)}</span>
       </div>
     </section>
   </main>

@@ -143,6 +143,11 @@ h2 {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   background: #ffffff;
+  --template-player-accent: #0f766e;
+  --template-player-border: #cbd5e1;
+  --template-player-button-bg: #ffffff;
+  --template-player-track: #e2e8f0;
+  --template-player-muted: #64748b;
 }
 
 .preview-frame {
@@ -154,6 +159,35 @@ h2 {
   width: 100%;
   height: 100%;
   display: block;
+  cursor: pointer;
+}
+
+.preview-frame canvas:focus-visible {
+  outline: 3px solid #14b8a6;
+  outline-offset: -3px;
+}
+
+.preview-error {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 18px;
+  box-sizing: border-box;
+  color: #f8fafc;
+  text-align: center;
+}
+
+.preview-error span {
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.preview-transport {
+  display: flex;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
 }
 
 .template-body {
