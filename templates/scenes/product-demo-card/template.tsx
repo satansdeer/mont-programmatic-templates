@@ -57,10 +57,14 @@ export default defineSpanScene({
                 </VStack>
               </Cell>
               <Cell id="metric-cell" col={9} row={2} colSpan={4} rowSpan={3} padding={8} align="center" justify="center">
-                <Rect id="metric-card" x={0} y={0} width="100%" height="100%" radius={24} fill={tokens.metricSurface} stroke={tokens.metricStroke} strokeWidth={2} layer={5} />
+                <Rect id="metric-card" x={0} y={0} width="100%" height="100%" radius={24} fill={tokens.metricSurface} stroke={tokens.metricStroke} strokeWidth={2} layer={5}>
+                  <Animate prop="scale" from={0.9} to={1} start="1150ms" duration="360ms" ease="outCubic" />
+                  <Animate prop="opacity" from={0} to={1} start="1150ms" duration="260ms" ease="outQuad" />
+                </Rect>
                 <VStack id="metric-stack" width="72%" height="58%" gap={10} align="center">
                   <Text id="metric-value" text="4.8x" width="100%" height="62%" size={54} color={tokens.metricText} align="center" layer={6}>
                     <TextEffect.Count from={1.0} to={settings.metricValue} start="1240ms" duration="680ms" step="decimal" suffix="x" />
+                    <Animation.FadeIn start="1420ms" duration="260ms" />
                   </Text>
                   <Text id="metric-label" text="faster iteration" width="100%" height="28%" size={21} weight="600" color={tokens.metricLabel} align="center" opacity={0} layer={6}>
                     <Animation.FadeIn start="1740ms" duration="260ms" />

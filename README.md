@@ -23,10 +23,12 @@ This repository is intended to be public and contribution-friendly. It contains 
 ```bash
 pnpm install
 pnpm registry:build
+pnpm dev
 pnpm studio:dev
 pnpm showcase:dev
 ```
 
+- `pnpm dev` starts every local app in parallel.
 - Creator Studio runs on `http://localhost:4310`.
 - Showcase runs on `http://localhost:4300`.
 - `pnpm check` runs package TypeScript/Svelte checks.

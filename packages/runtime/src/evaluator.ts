@@ -795,9 +795,10 @@ function nodeToVisual(
   scope: RenderScope
 ): ProgrammaticVisual | null {
   if (node.kind === 'text') {
+    const text = textValueForProps(props);
     return createProgrammaticVisual(node.id, 'text', {
       ...visualBoxAttributes(props, scope, 320, 80),
-      text: stringProp(props.text, ''),
+      text,
       size: lengthProp(props, 'size', lengthProp(props, 'fontSize', 32, 'y', scope), 'y', scope),
       weight: props.weight ?? props.fontWeight ?? '700',
       color: stringProp(props.color, '#0f172a'),
@@ -837,37 +838,47 @@ function splitTextToVisuals(
   context: EvaluationContext,
   scope: RenderScope
 ): ProgrammaticVisual[] {
-  const text = stringProp(props.text, '');
-  const mode = stringProp(props.revealSplit, 'letter');
-  const start = readTimeMs(props.revealStart, 0);
-  const stagger = readTimeMs(props.revealStagger, mode === 'word' ? 90 : 28);
-  const duration = readTimeMs(props.revealDuration, 320);
+  const text = textValueForProps(props);
+  const mode = revealUnitToMode(stringProp(props.textRevealUnit, stringProp(props.revealSplit, 'letter')));
+  const style = stringProp(props.textRevealStyle, 'fade');
+  const progress = clamp(numberProp(props.textRevealProgress, 1), 0, 1);
+  const stagger = numberProp(props.textRevealStaggerMs, readTimeMs(props.revealStagger, mode === 'word' ? 90 : 28));
+  const duration = numberProp(props.textRevealDurationMs, readTimeMs(props.revealDuration, 320));
   const pieces = mode === 'word' ? splitWords(text) : Array.from(text);
   const box = visualBoxAttributes(props, scope, 360, 90);
   const size = lengthProp(props, 'size', 34, 'y', scope);
   const lineHeight = numberProp(props.lineHeight, 1.08) * size;
   const maxCharsPerLine = Math.max(1, Math.floor(numberProp(box.width, 360) / (size * 0.56)));
-  const positions = measureTextPieces(pieces, mode, maxCharsPerLine, size, lineHeight);
+  const positions = measureTextPieces(pieces, mode, maxCharsPerLine, size, lineHeight, stringProp(props.align, 'left'), numberProp(box.width, 360));
+  const totalDuration = Math.max(1, duration + Math.max(0, pieces.length - 1) * stagger);
+  const elapsed = progress * totalDuration;
   const visuals: ProgrammaticVisual[] = [];
   pieces.forEach((piece, index) => {
-    const t = normalizedWindow(context.timeMs, start + index * stagger, duration);
+    const t = style === 'typewriter' && stagger <= 0
+      ? clamp(progress * pieces.length - index, 0, 1)
+      : clamp((elapsed - index * stagger) / Math.max(1, duration), 0, 1);
     const eased = easeProgress(t, 'outCubic');
     if (t <= 0) return;
     const position = positions[index];
-    const offsetDistance = lengthProp(props, 'revealDistance', 28, 'min', scope);
-    const direction = stringProp(props.revealDirection, 'bottom');
-    const delta = revealDelta(direction, offsetDistance * (1 - eased));
+    const offsetDistance = lengthProp(props, 'textRevealDistance', lengthProp(props, 'revealDistance', 28, 'min', scope), 'min', scope);
+    const direction = stringProp(props.textRevealDirection, stringProp(props.revealDirection, 'bottom'));
+    const shouldMove = style !== 'typewriter' && style !== 'wipe';
+    const delta = shouldMove ? revealDelta(direction, offsetDistance * (1 - eased)) : { x: 0, y: 0 };
+    const opacityFrom = numberProp(props.textRevealOpacityFrom, style === 'typewriter' || style === 'wipe' ? 1 : 0);
+    const pieceOpacity = opacityFrom + (1 - opacityFrom) * eased;
+    const scaleFrom = numberProp(props.textRevealScaleFrom, 1);
+    const pieceScale = scaleFrom + (1 - scaleFrom) * eased;
     visuals.push(createProgrammaticVisual(`${id}-reveal-${index}`, 'text', {
       ...box,
       x: numberProp(box.x, 0) + position.x + delta.x,
       y: numberProp(box.y, 0) + position.y + delta.y,
-      width: position.width,
+      width: position.width * pieceScale,
       height: lineHeight,
       text: piece,
       size,
       weight: props.weight ?? props.fontWeight ?? '700',
       color: props.color ?? '#0f172a',
-      opacity: scope.opacity * eased * numberProp(props.opacity, 1),
+      opacity: scope.opacity * pieceOpacity * numberProp(props.opacity, 1),
       align: 'left',
       verticalAlign: 'top',
       layer: numberProp(box.layer, 0) + index * 0.001
@@ -878,7 +889,48 @@ function splitTextToVisuals(
 
 function shouldRenderSplitText(props: Record<string, ProgrammaticSpanLiteral>): boolean {
   const split = stringProp(props.revealSplit, '');
-  return split === 'letter' || split === 'word';
+  return split === 'letter' ||
+    split === 'word' ||
+    stringProp(props.textRevealMode, '') === 'reveal';
+}
+
+function textValueForProps(props: Record<string, ProgrammaticSpanLiteral>): string {
+  if (stringProp(props.textNumberMode, '') !== 'count') {
+    return stringProp(props.text, '');
+  }
+  const rawValue = numberProp(props.textNumberValue, 0);
+  const step = props.textNumberStep;
+  const decimals = Math.max(0, Math.round(numberProp(props.textNumberDecimals, decimalsFromStep(step))));
+  const trimTrailingZeros = Boolean(props.textNumberTrimTrailingZeros);
+  let value = rawValue.toFixed(decimals);
+  if (trimTrailingZeros && value.includes('.')) {
+    value = value.replace(/\.?0+$/, '');
+  }
+  return `${stringProp(props.textNumberPrefix, '')}${value}${stringProp(props.textNumberSuffix, '')}`;
+}
+
+function decimalsFromStep(step: ProgrammaticSpanLiteral | undefined): number {
+  if (step === 'integer') return 0;
+  if (step === 'decimal') return 1;
+  if (typeof step === 'number') {
+    const parts = String(step).split('.');
+    return parts[1]?.length ?? 0;
+  }
+  if (typeof step === 'string') {
+    const numeric = Number.parseFloat(step);
+    if (Number.isFinite(numeric)) return decimalsFromStep(numeric);
+  }
+  return 0;
+}
+
+function revealUnitToMode(unit: string): 'letter' | 'word' {
+  switch (unit) {
+    case 'words':
+    case 'word':
+      return 'word';
+    default:
+      return 'letter';
+  }
 }
 
 function resolveProps(
@@ -1294,12 +1346,14 @@ function measureTextPieces(
   mode: string,
   maxCharsPerLine: number,
   size: number,
-  lineHeight: number
+  lineHeight: number,
+  align: string,
+  boxWidth: number
 ): Array<{ x: number; y: number; width: number }> {
   let x = 0;
   let y = 0;
   let currentLineChars = 0;
-  return pieces.map((piece) => {
+  const measured = pieces.map((piece) => {
     const chars = piece.length;
     if (currentLineChars > 0 && currentLineChars + chars > maxCharsPerLine) {
       x = 0;
@@ -1311,6 +1365,16 @@ function measureTextPieces(
     x += width;
     currentLineChars += chars;
     return position;
+  });
+  const lineWidths = new Map<number, number>();
+  for (const piece of measured) {
+    lineWidths.set(piece.y, Math.max(lineWidths.get(piece.y) ?? 0, piece.x + piece.width));
+  }
+  if (align !== 'center' && align !== 'right' && align !== 'end') return measured;
+  return measured.map((piece) => {
+    const lineWidth = lineWidths.get(piece.y) ?? boxWidth;
+    const offset = align === 'center' ? (boxWidth - lineWidth) / 2 : boxWidth - lineWidth;
+    return { ...piece, x: piece.x + Math.max(0, offset) };
   });
 }
 
