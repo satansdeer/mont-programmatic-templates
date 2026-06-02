@@ -11,7 +11,17 @@
   "ipRisk": "generic",
   "publishToShowcase": true,
   "settings": ["headline", "primary", "accent", "ctaLabel", "metricValue", "ctaFrame", "cursorStart", "cursorClick"],
-  "tokens": ["backdrop", "ctaFill", "ctaGlow", "metricSurface", "metricText"],
+  "tokens": [
+    "backdrop",
+    "haloLeft",
+    "haloRight",
+    "ctaFill",
+    "ctaGlow",
+    "metricSurface",
+    "metricStroke",
+    "metricText",
+    "metricLabel"
+  ],
   "thirdPartyAssets": [],
   "preview": {
     "thumbnail": "thumbnail.png",

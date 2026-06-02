@@ -9,6 +9,7 @@
     "baseUrl": ".",
     "paths": {
       "@mont-templates/runtime": ["packages/runtime/src/index.ts"],
+      "@mont-templates/preview-renderer": ["packages/preview-renderer/src/index.ts"],
       "@mont-templates/template-sdk": ["packages/template-sdk/src/index.ts"]
     }
   }

@@ -1,9 +1,9 @@
 {
-  "name": "@mont-templates/runtime",
+  "name": "@mont-templates/preview-renderer",
   "version": "0.1.0",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/preview-renderer/src/index.js",
+  "types": "./dist/preview-renderer/src/index.d.ts",
   "files": [
     "dist"
   ],
@@ -13,7 +13,7 @@
     "test": "pnpm check"
   },
   "dependencies": {
-    "@babel/parser": "^7.28.4"
+    "@mont-templates/runtime": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

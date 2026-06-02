@@ -6,16 +6,32 @@ This repository is intended to be public and contribution-friendly. It contains 
 
 ## Repository Layout
 
-- `packages/runtime` - Public TSX DSL types, schema helpers, validation utilities, and rendering-agnostic runtime contracts.
-- `packages/template-sdk` - Authoring helpers for settings, derived tokens, manifests, tests, and preview generation.
-- `packages/creator-studio` - Public template creator studio derived from the Mont programmatic spans workbench.
-- `packages/showcase` - Static showcase website for browsing approved community templates.
+- `packages/runtime` - Public TSX compiler, evaluator, settings/tokens, diagnostics, and plain programmatic visual IR.
+- `packages/preview-renderer` - Narrow canvas preview renderer and edit-overlay helpers for the public visual IR.
+- `packages/template-sdk` - Manifest helpers and brand-safety checks.
+- `packages/creator-studio` - Local template creator studio derived from the Mont programmatic spans workbench.
+- `packages/showcase` - Static showcase website for browsing approved community templates and docs.
 - `templates/components` - Reusable visual components.
 - `templates/scenes` - Full scene templates.
 - `templates/effects` - Motion/effect snippets and presets.
 - `templates/packs` - Curated template packs.
 - `registry` - Generated community registry consumed by Mont and the showcase.
 - `docs` - Authoring, contribution, legal, and review policy docs.
+
+## Local Development
+
+```bash
+pnpm install
+pnpm registry:build
+pnpm studio:dev
+pnpm showcase:dev
+```
+
+- Creator Studio runs on `http://localhost:4310`.
+- Showcase runs on `http://localhost:4300`.
+- `pnpm check` runs package TypeScript/Svelte checks.
+- `pnpm test` runs checks, builds all packages/apps, and validates template manifests against compiled TSX.
+- `pnpm build` builds the runtime packages, Creator Studio, and Showcase.
 
 ## License
 

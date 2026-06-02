@@ -2,6 +2,24 @@
 
 Mont programmatic templates are TSX scene descriptions with explicit editable settings and hidden derived tokens.
 
+## TSX Scene Shape
+
+Every template exports `defineSpanScene`.
+
+```tsx
+export default defineSpanScene({
+  id: "product-demo-card",
+  width: 1280,
+  height: 720,
+  durationMs: 6200,
+  settings: {},
+  tokens: {},
+  render({ settings, tokens }) {
+    return <Scene>{/* visuals */}</Scene>;
+  }
+});
+```
+
 ## Settings
 
 Settings are the values users can edit in Mont.
@@ -49,3 +67,28 @@ cursorClick: pointSetting(
 ```
 
 Overlay-backed settings may still appear in settings panels, but should be collapsed by default in authoring tools.
+
+## Layout
+
+Prefer layout containers over manual absolute positioning for composition:
+
+- `Bento` for grid-like scene structure.
+- `Cell` for local coordinate spaces and padding.
+- `VStack` and `HStack` for aligned repeated content.
+- `MotionBox` for transforms applied after layout, such as scale, pulse, rotation, swoop in, and swoop out.
+
+## Text Effects
+
+Use text effects when the final layout should be deterministic:
+
+- `TextEffect.Count` for numeric changes in either direction.
+- `TextEffect.Typewriter` for fixed line-aware character reveal.
+- `TextEffect.Reveal`, `WordReveal`, `LetterFlyIn`, `WordDrop`, and `Wipe` for split text motion.
+
+## Render Effects And Media
+
+Visual nodes may set render effect props such as `blur`, `shadowColor`, `shadowBlur`, `glowColor`, and `glowBlur`. The public preview renderer supports deterministic placeholders for images, Lottie, and 3D objects; Mont can replace those with the full private media renderer when importing templates.
+
+## Manifest Reconciliation
+
+Run `pnpm registry:build` after editing manifests and `pnpm test` before submitting. The validator checks that manifest `settings` and `tokens` exactly match the compiled TSX scene, so dead or missing manifest entries are caught early.

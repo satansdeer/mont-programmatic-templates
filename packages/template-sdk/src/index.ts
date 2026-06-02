@@ -1,3 +1,12 @@
+export type {
+  CommunityRegistry,
+  TemplateAssetDisclosure,
+  TemplateIpRisk,
+  TemplateKind,
+  TemplateManifest,
+  TemplateReviewStatus
+} from "@mont-templates/runtime";
+
 import type { TemplateManifest } from "@mont-templates/runtime";
 
 export function defineTemplateManifest(manifest: TemplateManifest): TemplateManifest {

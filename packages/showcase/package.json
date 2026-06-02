@@ -4,8 +4,21 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "echo \"TODO: build static showcase\"",
-    "check": "echo \"TODO: check showcase\"",
-    "test": "echo \"TODO: test showcase\""
+    "dev": "vite --host 0.0.0.0 --port 4300",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig tsconfig.json",
+    "test": "pnpm check"
+  },
+  "dependencies": {
+    "@mont-templates/preview-renderer": "workspace:*",
+    "@mont-templates/runtime": "workspace:*",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "vite": "^6.3.6",
+    "svelte": "^5.39.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.10",
+    "svelte-check": "^4.1.6",
+    "typescript": "^5.9.2"
   }
 }
