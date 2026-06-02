@@ -32,6 +32,7 @@
 
   export let template: ShowcaseTemplateCardData;
   export let assetUrlModules: Record<string, string> = {};
+  export let autoplay = false;
 
   let canvas: HTMLCanvasElement;
   let lastSource = '';
@@ -39,10 +40,11 @@
   let spec: ProgrammaticSpanSpec | null = null;
   let settings: ProgrammaticSpanSettings = {};
   let playheadMs = 0;
-  let playing = true;
+  let playing = false;
   let layoutEngineReady = false;
   let layoutEngineError = '';
   let assetLoadRevision = 0;
+  let autoplayStarted = false;
 
   onMount(() => {
     let cancelled = false;
@@ -82,6 +84,7 @@
         assetLoadRevision += 1;
       }
     });
+    scheduleAutoplayAfterStaticFrame();
   }
 
   function compileSource(source: string): void {
@@ -90,7 +93,18 @@
     spec = compileResult.spec;
     settings = spec ? createDefaultProgrammaticSpanSettings(spec.settings) : {};
     playheadMs = spec?.editModeTimeMs ?? 0;
-    playing = Boolean(spec);
+    playing = false;
+    autoplayStarted = false;
+  }
+
+  function scheduleAutoplayAfterStaticFrame(): void {
+    if (!autoplay || autoplayStarted || !spec) return;
+    autoplayStarted = true;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        playing = true;
+      });
+    });
   }
 
   function evaluatePreviewFrame(
