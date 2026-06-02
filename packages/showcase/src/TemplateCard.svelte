@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
   import {
     compileProgrammaticSpanTsx,
     createDefaultProgrammaticSpanSettings,
@@ -32,8 +32,6 @@
 
   export let template: ShowcaseTemplateCardData;
   export let assetUrlModules: Record<string, string> = {};
-  export let autoload = false;
-  export let autoplay = false;
 
   let canvas: HTMLCanvasElement;
   let lastSource = '';
@@ -42,17 +40,13 @@
   let settings: ProgrammaticSpanSettings = {};
   let playheadMs = 0;
   let playing = false;
-  let previewActive = autoload;
+  let previewActive = false;
   let layoutEngineReady = false;
   let layoutEngineError = '';
   let layoutEngineStarted = false;
   let assetLoadRevision = 0;
-  let autoplayStarted = false;
+  let loadedFontKey = '';
   let destroyed = false;
-
-  onMount(() => {
-    if (previewActive) startLayoutEngine();
-  });
 
   onDestroy(() => {
     destroyed = true;
@@ -62,13 +56,8 @@
   $: if (previewActive && template.source !== lastSource) {
     compileSource(template.source);
   }
-  $: if (previewActive) {
-    void loadTemplateFonts(template.assets, (assetIdOrUrl) => resolveTemplateAssetUrl(template.assets, assetIdOrUrl, assetUrlModules, {
-      preferPublicUrl: !import.meta.env.DEV
-    })).then(() => {
-      assetLoadRevision += 1;
-    });
-  }
+  $: activeFontKey = previewActive ? templateFontKey(template.assets) : '';
+  $: if (activeFontKey) loadFontsOnce(activeFontKey);
   $: frame = previewActive && spec
     ? evaluatePreviewFrame(spec, playheadMs, settings, layoutEngineReady)
     : { visuals: [] as ProgrammaticVisual[] };
@@ -84,7 +73,6 @@
         assetLoadRevision += 1;
       }
     });
-    scheduleAutoplayAfterStaticFrame();
   }
 
   function startLayoutEngine(): void {
@@ -107,17 +95,23 @@
     settings = spec ? createDefaultProgrammaticSpanSettings(spec.settings) : {};
     playheadMs = spec?.editModeTimeMs ?? 0;
     playing = false;
-    autoplayStarted = false;
   }
 
-  function scheduleAutoplayAfterStaticFrame(): void {
-    if (!autoplay || autoplayStarted || !spec) return;
-    autoplayStarted = true;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        playing = true;
-      });
+  function loadFontsOnce(fontKey: string): void {
+    if (fontKey === loadedFontKey) return;
+    loadedFontKey = fontKey;
+    void loadTemplateFonts(template.assets, (assetIdOrUrl) => resolveTemplateAssetUrl(template.assets, assetIdOrUrl, assetUrlModules, {
+      preferPublicUrl: !import.meta.env.DEV
+    })).then(() => {
+      if (!destroyed) assetLoadRevision += 1;
     });
+  }
+
+  function templateFontKey(assets: TemplateAsset[] | undefined): string {
+    return (assets ?? [])
+      .filter((asset) => asset.kind === 'font')
+      .map((asset) => `${asset.id}:${asset.localPath ?? ''}:${asset.publicUrl ?? ''}:${asset.fontFamily ?? ''}:${asset.fontWeight ?? ''}`)
+      .join('|') || 'no-fonts';
   }
 
   function evaluatePreviewFrame(
@@ -141,11 +135,14 @@
   function activatePreview(shouldPlay = false): void {
     previewActive = true;
     if (shouldPlay) {
-      autoplayStarted = true;
       requestAnimationFrame(() => {
         playing = true;
       });
     }
+  }
+
+  function pausePreview(): void {
+    playing = false;
   }
 
   function handleCanvasKeydown(event: KeyboardEvent): void {
@@ -162,6 +159,8 @@
         class="preview-placeholder"
         type="button"
         aria-label={`Load ${template.title} preview`}
+        on:pointerenter={() => activatePreview(true)}
+        on:focus={() => activatePreview(true)}
         on:click={() => activatePreview(true)}
       >
         <span>Load preview</span>
@@ -172,6 +171,9 @@
         role="button"
         tabindex="0"
         aria-label={`${template.title} preview, ${playing ? 'playing' : 'paused'}`}
+        on:pointerenter={() => activatePreview(true)}
+        on:pointerleave={pausePreview}
+        on:blur={pausePreview}
         on:click={togglePreviewPlayback}
         on:keydown={handleCanvasKeydown}
       ></canvas>

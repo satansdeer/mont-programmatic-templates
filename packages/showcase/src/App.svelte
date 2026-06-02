@@ -93,12 +93,10 @@
       <p>{templates.length} public template{templates.length === 1 ? '' : 's'} in the community registry.</p>
     </div>
     <div class="template-grid">
-      {#each templates as template, index}
+      {#each templates as template}
         <TemplateCard
           {template}
           assetUrlModules={normalizedTemplateAssetUrls}
-          autoload={index === 0}
-          autoplay={index === 0}
         />
       {/each}
     </div>
