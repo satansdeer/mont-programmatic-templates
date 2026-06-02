@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import {
     compileProgrammaticSpanTsx,
     createDefaultProgrammaticSpanSettings,
+    ensureProgrammaticSpanLayoutEngineReady,
     evaluateProgrammaticSpanFrame,
     type ProgrammaticSpanCompileResult,
     type ProgrammaticSpanLiteral,
@@ -73,15 +74,38 @@
   let dragState: DragState | null = null;
   let animationFrame = 0;
   let lastFrameTime = 0;
+  let layoutEngineReady = false;
+  let layoutEngineError = '';
+
+  onMount(() => {
+    let cancelled = false;
+    ensureProgrammaticSpanLayoutEngineReady()
+      .then(() => {
+        if (!cancelled) {
+          layoutEngineReady = true;
+          settings = { ...settings };
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) layoutEngineError = error instanceof Error ? error.message : String(error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
 
   $: selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? initialTemplate;
   $: if (source !== lastCompiledSource) {
     compileSource();
   }
   $: frame = spec
-    ? evaluateProgrammaticSpanFrame(spec, playheadMs, {}, settings)
+    ? evaluateStudioFrame(spec, playheadMs, settings, layoutEngineReady)
     : { visuals: [] as ProgrammaticVisual[], effects: [], diagnostics: [] };
-  $: allDiagnostics = [...compileResult.diagnostics, ...frame.diagnostics];
+  $: allDiagnostics = [
+    ...compileResult.diagnostics,
+    ...(layoutEngineError ? [{ severity: 'warning' as const, message: layoutEngineError }] : []),
+    ...frame.diagnostics
+  ];
   $: editHandles = spec ? buildEditOverlayHandles(spec.settings, settings, frame.visuals) : [];
   $: editConnections = buildEditOverlayConnections(editHandles);
   $: if (canvas && spec) {
@@ -90,6 +114,15 @@
       height: spec.height,
       background: '#0f172a'
     });
+  }
+
+  function evaluateStudioFrame(
+    nextSpec: ProgrammaticSpanSpec,
+    nextPlayheadMs: number,
+    nextSettings: ProgrammaticSpanSettings,
+    _layoutEngineReady: boolean
+  ) {
+    return evaluateProgrammaticSpanFrame(nextSpec, nextPlayheadMs, {}, nextSettings);
   }
 
   function compileSource(): void {

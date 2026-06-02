@@ -13,7 +13,8 @@
     "test": "pnpm check"
   },
   "dependencies": {
-    "@mont-templates/runtime": "workspace:*"
+    "@mont-templates/runtime": "workspace:*",
+    "@usemont/scene-model": "file:../../vendor/usemont-packages/usemont-scene-model-0.0.0.tgz"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

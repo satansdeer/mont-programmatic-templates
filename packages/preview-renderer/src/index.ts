@@ -43,6 +43,60 @@ export type ProgrammaticEditOverlayConnection = {
 
 type Point = { x: number; y: number };
 
+function visualAttribute(
+  visual: ProgrammaticVisual,
+  key: string
+): ProgrammaticSpanLiteral | undefined {
+  const attributeAliases: Record<string, string[]> = {
+    text: ['content'],
+    size: ['fontSize'],
+    color: ['fill'],
+    weight: ['fontWeight'],
+    align: ['textAlign'],
+    radius: ['cornerRadius']
+  };
+  const attributes = visual.attributes as unknown;
+  const read = (candidateKey: string): ProgrammaticSpanLiteral | undefined => {
+    if (attributes instanceof Map) {
+      return attributes.get(candidateKey) as ProgrammaticSpanLiteral | undefined;
+    }
+    if (typeof attributes === 'object' && attributes !== null) {
+      return (attributes as Record<string, ProgrammaticSpanLiteral | undefined>)[candidateKey];
+    }
+    return undefined;
+  };
+  const direct = read(key);
+  if (direct !== undefined) return direct;
+  for (const alias of attributeAliases[key] ?? []) {
+    const aliased = read(alias);
+    if (aliased !== undefined) return aliased;
+  }
+  if (key === 'text') {
+    const proseMirrorText = extractProseMirrorText(read('proseMirrorDocument'));
+    if (proseMirrorText) return proseMirrorText;
+  }
+  return undefined;
+}
+
+function extractProseMirrorText(value: ProgrammaticSpanLiteral | undefined): string {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return '';
+  const content = (value as { content?: unknown }).content;
+  if (!Array.isArray(content)) return '';
+  return content.map((node) => extractProseMirrorNodeText(node)).filter(Boolean).join('\n');
+}
+
+function extractProseMirrorNodeText(node: unknown): string {
+  if (typeof node !== 'object' || node === null) return '';
+  const record = node as { text?: unknown; content?: unknown };
+  if (typeof record.text === 'string') return record.text;
+  if (!Array.isArray(record.content)) return '';
+  return record.content.map((child) => extractProseMirrorNodeText(child)).join('');
+}
+
+function compareVisualLayer(left: ProgrammaticVisual, right: ProgrammaticVisual): number {
+  return finiteNumber(visualAttribute(left, 'layer'), 0) - finiteNumber(visualAttribute(right, 'layer'), 0);
+}
+
 export function drawProgrammaticFrameToCanvas(
   canvas: HTMLCanvasElement,
   visuals: ProgrammaticVisual[],
@@ -59,7 +113,7 @@ export function drawProgrammaticFrameToCanvas(
   context.fillStyle = options.background ?? '#0f172a';
   context.fillRect(0, 0, options.width, options.height);
 
-  for (const visual of visuals) {
+  for (const visual of [...visuals].sort(compareVisualLayer)) {
     drawVisual(context, visual);
   }
 }
@@ -82,10 +136,10 @@ export function buildEditOverlayHandles(
         kind: 'frame',
         settingId: setting.id,
         label: setting.label ?? setting.id,
-        x: visual ? finiteNumber(visual.attributes.x, finiteNumber(rect.x, 0)) : finiteNumber(rect.x, 0),
-        y: visual ? finiteNumber(visual.attributes.y, finiteNumber(rect.y, 0)) : finiteNumber(rect.y, 0),
-        width: Math.max(1, visual ? finiteNumber(visual.attributes.width, finiteNumber(rect.width, 1)) : finiteNumber(rect.width, 1)),
-        height: Math.max(1, visual ? finiteNumber(visual.attributes.height, finiteNumber(rect.height, 1)) : finiteNumber(rect.height, 1)),
+        x: visual ? finiteNumber(visualAttribute(visual, 'x'), finiteNumber(rect.x, 0)) : finiteNumber(rect.x, 0),
+        y: visual ? finiteNumber(visualAttribute(visual, 'y'), finiteNumber(rect.y, 0)) : finiteNumber(rect.y, 0),
+        width: Math.max(1, visual ? finiteNumber(visualAttribute(visual, 'width'), finiteNumber(rect.width, 1)) : finiteNumber(rect.width, 1)),
+        height: Math.max(1, visual ? finiteNumber(visualAttribute(visual, 'height'), finiteNumber(rect.height, 1)) : finiteNumber(rect.height, 1)),
         ...(setting.overlayGroup ? { overlayGroup: setting.overlayGroup } : {}),
         ...(typeof setting.overlayOrder === 'number' ? { overlayOrder: setting.overlayOrder } : {})
       });
@@ -132,7 +186,7 @@ export function buildEditOverlayConnections(
 
 function drawVisual(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
   context.save();
-  const opacity = finiteNumber(visual.attributes.opacity, 1);
+  const opacity = finiteNumber(visualAttribute(visual, 'opacity'), 1);
   context.globalAlpha *= Math.max(0, Math.min(1, opacity));
   applyEffects(context, visual);
 
@@ -158,7 +212,7 @@ function drawVisual(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
       drawText(context, visual);
       break;
     case 'image':
-      if (literalString(visual.attributes.kind, '') === 'cursor') {
+      if (literalString(visualAttribute(visual, 'kind'), '') === 'cursor') {
         drawCursor(context, visual);
       } else {
         drawMediaPlaceholder(context, visual, 'Image');
@@ -182,56 +236,56 @@ function drawVisual(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
 }
 
 function applyEffects(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
-  const x = finiteNumber(visual.attributes.x, 0);
-  const y = finiteNumber(visual.attributes.y, 0);
-  const width = finiteNumber(visual.attributes.width, 0);
-  const height = finiteNumber(visual.attributes.height, 0);
-  const rotation = finiteNumber(visual.attributes.rotation, 0);
-  const scaleX = finiteNumber(visual.attributes.scaleX, 1);
-  const scaleY = finiteNumber(visual.attributes.scaleY, 1);
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), 0);
+  const height = finiteNumber(visualAttribute(visual, 'height'), 0);
+  const rotation = finiteNumber(visualAttribute(visual, 'rotation'), 0);
+  const scaleX = finiteNumber(visualAttribute(visual, 'scaleX'), 1);
+  const scaleY = finiteNumber(visualAttribute(visual, 'scaleY'), 1);
   if (Math.abs(rotation) > 0.0001 || Math.abs(scaleX - 1) > 0.0001 || Math.abs(scaleY - 1) > 0.0001) {
     context.translate(x + width / 2, y + height / 2);
     context.rotate(rotation * Math.PI / 180);
     context.scale(scaleX, scaleY);
     context.translate(-(x + width / 2), -(y + height / 2));
   }
-  const blur = finiteNumber(visual.attributes.blur, 0);
+  const blur = finiteNumber(visualAttribute(visual, 'blur'), 0);
   if (blur > 0) context.filter = `blur(${blur}px)`;
-  const shadowColor = literalString(visual.attributes.shadowColor, '');
-  const glowColor = literalString(visual.attributes.glowColor, '');
+  const shadowColor = literalString(visualAttribute(visual, 'shadowColor'), '');
+  const glowColor = literalString(visualAttribute(visual, 'glowColor'), '');
   if (shadowColor || glowColor) {
     context.shadowColor = glowColor || shadowColor;
-    context.shadowBlur = finiteNumber(visual.attributes.glowBlur, finiteNumber(visual.attributes.shadowBlur, 0));
-    context.shadowOffsetX = finiteNumber(visual.attributes.shadowOffsetX, 0);
-    context.shadowOffsetY = finiteNumber(visual.attributes.shadowOffsetY, 0);
+    context.shadowBlur = finiteNumber(visualAttribute(visual, 'glowBlur'), finiteNumber(visualAttribute(visual, 'shadowBlur'), 0));
+    context.shadowOffsetX = finiteNumber(visualAttribute(visual, 'shadowOffsetX'), 0);
+    context.shadowOffsetY = finiteNumber(visualAttribute(visual, 'shadowOffsetY'), 0);
   }
 }
 
 function drawRect(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
-  const x = finiteNumber(visual.attributes.x, 0);
-  const y = finiteNumber(visual.attributes.y, 0);
-  const width = finiteNumber(visual.attributes.width, 0);
-  const height = finiteNumber(visual.attributes.height, 0);
-  const radius = Math.max(0, finiteNumber(visual.attributes.radius, 0));
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), 0);
+  const height = finiteNumber(visualAttribute(visual, 'height'), 0);
+  const radius = Math.max(0, finiteNumber(visualAttribute(visual, 'radius'), 0));
   roundedRectPath(context, x, y, width, height, Math.min(radius, width / 2, height / 2));
   fillAndStroke(context, visual);
 }
 
 function drawEllipse(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
-  const x = finiteNumber(visual.attributes.x, 0);
-  const y = finiteNumber(visual.attributes.y, 0);
-  const width = finiteNumber(visual.attributes.width, finiteNumber(visual.attributes.radius, 40) * 2);
-  const height = finiteNumber(visual.attributes.height, width);
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), finiteNumber(visualAttribute(visual, 'radius'), 40) * 2);
+  const height = finiteNumber(visualAttribute(visual, 'height'), width);
   context.beginPath();
   context.ellipse(x + width / 2, y + height / 2, Math.max(1, width / 2), Math.max(1, height / 2), 0, 0, Math.PI * 2);
   fillAndStroke(context, visual);
 }
 
 function drawPolygon(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
-  const x = finiteNumber(visual.attributes.x, 0);
-  const y = finiteNumber(visual.attributes.y, 0);
-  const width = finiteNumber(visual.attributes.width, 100);
-  const height = finiteNumber(visual.attributes.height, 100);
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), 100);
+  const height = finiteNumber(visualAttribute(visual, 'height'), 100);
   const points = visual.type === 'triangle'
     ? [{ x: x + width / 2, y }, { x: x + width, y: y + height }, { x, y: y + height }]
     : visual.type === 'diamond'
@@ -247,15 +301,15 @@ function drawPolygon(context: CanvasRenderingContext2D, visual: ProgrammaticVisu
 }
 
 function drawLine(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
-  const x1 = finiteNumber(visual.attributes.x1, finiteNumber(visual.attributes.x, 0));
-  const y1 = finiteNumber(visual.attributes.y1, finiteNumber(visual.attributes.y, 0));
-  const x2 = finiteNumber(visual.attributes.x2, x1 + finiteNumber(visual.attributes.width, 120));
-  const y2 = finiteNumber(visual.attributes.y2, y1 + finiteNumber(visual.attributes.height, 0));
+  const x1 = finiteNumber(visualAttribute(visual, 'x1'), finiteNumber(visualAttribute(visual, 'x'), 0));
+  const y1 = finiteNumber(visualAttribute(visual, 'y1'), finiteNumber(visualAttribute(visual, 'y'), 0));
+  const x2 = finiteNumber(visualAttribute(visual, 'x2'), x1 + finiteNumber(visualAttribute(visual, 'width'), 120));
+  const y2 = finiteNumber(visualAttribute(visual, 'y2'), y1 + finiteNumber(visualAttribute(visual, 'height'), 0));
   context.beginPath();
   context.moveTo(x1, y1);
   context.lineTo(x2, y2);
-  context.strokeStyle = literalString(visual.attributes.stroke, literalString(visual.attributes.fill, '#0f172a'));
-  context.lineWidth = finiteNumber(visual.attributes.strokeWidth, 4);
+  context.strokeStyle = literalString(visualAttribute(visual, 'stroke'), literalString(visualAttribute(visual, 'fill'), '#0f172a'));
+  context.lineWidth = finiteNumber(visualAttribute(visual, 'strokeWidth'), 4);
   context.lineCap = 'round';
   context.stroke();
   if (visual.type === 'arrow') {
@@ -264,32 +318,32 @@ function drawLine(context: CanvasRenderingContext2D, visual: ProgrammaticVisual)
 }
 
 function drawText(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
-  const x = finiteNumber(visual.attributes.x, 0);
-  const y = finiteNumber(visual.attributes.y, 0);
-  const width = Math.max(1, finiteNumber(visual.attributes.width, 200));
-  const height = Math.max(1, finiteNumber(visual.attributes.height, 80));
-  const size = Math.max(1, finiteNumber(visual.attributes.size, 32));
-  const weight = literalString(visual.attributes.weight, '700');
-  const family = literalString(visual.attributes.fontFamily, 'Inter, ui-sans-serif, system-ui, sans-serif');
-  const text = literalString(visual.attributes.text, '');
-  context.fillStyle = literalString(visual.attributes.color, '#0f172a');
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = Math.max(1, finiteNumber(visualAttribute(visual, 'width'), 200));
+  const height = Math.max(1, finiteNumber(visualAttribute(visual, 'height'), 80));
+  const size = Math.max(1, finiteNumber(visualAttribute(visual, 'size'), 32));
+  const weight = literalString(visualAttribute(visual, 'weight'), '700');
+  const family = literalString(visualAttribute(visual, 'fontFamily'), 'Inter, ui-sans-serif, system-ui, sans-serif');
+  const text = literalString(visualAttribute(visual, 'text'), '');
+  context.fillStyle = literalString(visualAttribute(visual, 'color'), '#0f172a');
   context.font = `${weight} ${size}px ${family}`;
-  context.textAlign = textAlign(visual.attributes.align);
+  context.textAlign = textAlign(visualAttribute(visual, 'align'));
   context.textBaseline = 'top';
   const lines = wrapText(context, text, width);
   const lineHeight = size * 1.08;
   const totalHeight = lines.length * lineHeight;
-  const startY = verticalStart(y, height, totalHeight, visual.attributes.verticalAlign);
+  const startY = verticalStart(y, height, totalHeight, visualAttribute(visual, 'verticalAlign'));
   const anchorX = context.textAlign === 'center' ? x + width / 2 : context.textAlign === 'right' ? x + width : x;
   lines.forEach((line, index) => context.fillText(line, anchorX, startY + index * lineHeight));
 }
 
 function drawCursor(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
-  const x = finiteNumber(visual.attributes.x, 0);
-  const y = finiteNumber(visual.attributes.y, 0);
-  const width = finiteNumber(visual.attributes.width, 56);
-  const height = finiteNumber(visual.attributes.height, width * 1.32);
-  const strokeWidth = finiteNumber(visual.attributes.strokeWidth, 5);
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), 56);
+  const height = finiteNumber(visualAttribute(visual, 'height'), width * 1.32);
+  const strokeWidth = finiteNumber(visualAttribute(visual, 'strokeWidth'), 5);
   const points = [
     { x, y },
     { x: x + width * 0.86, y: y + height * 0.56 },
@@ -305,8 +359,8 @@ function drawCursor(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
     else context.lineTo(point.x, point.y);
   });
   context.closePath();
-  context.fillStyle = literalString(visual.attributes.fill, '#ffffff');
-  context.strokeStyle = literalString(visual.attributes.stroke, '#0f172a');
+  context.fillStyle = literalString(visualAttribute(visual, 'fill'), '#ffffff');
+  context.strokeStyle = literalString(visualAttribute(visual, 'stroke'), '#0f172a');
   context.lineJoin = 'round';
   context.lineWidth = strokeWidth;
   context.fill();
@@ -314,10 +368,10 @@ function drawCursor(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
 }
 
 function drawMediaPlaceholder(context: CanvasRenderingContext2D, visual: ProgrammaticVisual, label: string): void {
-  const x = finiteNumber(visual.attributes.x, 0);
-  const y = finiteNumber(visual.attributes.y, 0);
-  const width = finiteNumber(visual.attributes.width, 200);
-  const height = finiteNumber(visual.attributes.height, 140);
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), 200);
+  const height = finiteNumber(visualAttribute(visual, 'height'), 140);
   roundedRectPath(context, x, y, width, height, 16);
   context.fillStyle = '#e0f2fe';
   context.fill();
@@ -332,13 +386,13 @@ function drawMediaPlaceholder(context: CanvasRenderingContext2D, visual: Program
 }
 
 function fillAndStroke(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
-  const fill = literalString(visual.attributes.fill, 'transparent');
+  const fill = literalString(visualAttribute(visual, 'fill'), 'transparent');
   if (fill !== 'transparent' && fill !== 'none') {
     context.fillStyle = fill;
     context.fill();
   }
-  const stroke = literalString(visual.attributes.stroke, '');
-  const strokeWidth = finiteNumber(visual.attributes.strokeWidth, 0);
+  const stroke = literalString(visualAttribute(visual, 'stroke'), '');
+  const strokeWidth = finiteNumber(visualAttribute(visual, 'strokeWidth'), 0);
   if (stroke && stroke !== 'none' && strokeWidth > 0) {
     context.strokeStyle = stroke;
     context.lineWidth = strokeWidth;
@@ -444,8 +498,8 @@ function drawArrowHead(context: CanvasRenderingContext2D, from: Point, to: Point
 function visualOrigin(visual: ProgrammaticVisual | undefined): Point {
   if (!visual) return { x: 0, y: 0 };
   return {
-    x: finiteNumber(visual.attributes.x, 0),
-    y: finiteNumber(visual.attributes.y, 0)
+    x: finiteNumber(visualAttribute(visual, 'x'), 0),
+    y: finiteNumber(visualAttribute(visual, 'y'), 0)
   };
 }
 

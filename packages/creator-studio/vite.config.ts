@@ -11,6 +11,7 @@ const repoRoot = normalize(fileURLToPath(new URL('../../', import.meta.url)));
 const templateRoot = join(repoRoot, 'templates');
 
 export default defineConfig({
+  base: process.env.STUDIO_BASE ?? '/',
   plugins: [svelte(), studioSavePlugin()],
   server: {
     fs: {

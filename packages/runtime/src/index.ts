@@ -1,3 +1,13 @@
-export * from './compiler.js';
-export * from './evaluator.js';
-export * from './types.js';
+export * from '@usemont/programmatic-spans';
+export type {
+  Visual as ProgrammaticVisual,
+  VisualType as ProgrammaticVisualType
+} from '@usemont/scene-model';
+export type {
+  CommunityRegistry,
+  TemplateAssetDisclosure,
+  TemplateIpRisk,
+  TemplateKind,
+  TemplateManifest,
+  TemplateReviewStatus
+} from './templateTypes.js';

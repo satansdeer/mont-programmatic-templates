@@ -2,6 +2,7 @@
   import {
     compileProgrammaticSpanTsx,
     createDefaultProgrammaticSpanSettings,
+    ensureProgrammaticSpanLayoutEngineReady,
     evaluateProgrammaticSpanFrame,
     type CommunityRegistry,
     type ProgrammaticSpanSpec
@@ -27,6 +28,7 @@
   ];
 
   const communityRegistry = registry as CommunityRegistry;
+  const layoutEngineReadyPromise = ensureProgrammaticSpanLayoutEngineReady();
 
   const templates = communityRegistry.templates
     .filter((template) => template.publishToShowcase && template.reviewStatus === 'approved' && template.ipRisk === 'generic')
@@ -42,9 +44,11 @@
 
   function preview(node: HTMLCanvasElement, source: string) {
     drawPreview(node, source);
+    void layoutEngineReadyPromise.then(() => drawPreview(node, source));
     return {
       update(nextSource: string) {
         drawPreview(node, nextSource);
+        void layoutEngineReadyPromise.then(() => drawPreview(node, nextSource));
       }
     };
   }
@@ -64,6 +68,15 @@
 
   function githubSourceUrl(path: string): string {
     return `https://github.com/satansdeer/mont-programmatic-templates/blob/main/${path}`;
+  }
+
+  function studioUrl(templateId: string): string {
+    const encodedTemplateId = encodeURIComponent(templateId);
+    if (import.meta.env.DEV) return `http://localhost:4310/?template=${encodedTemplateId}`;
+    const basePath = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`;
+    return `${basePath}studio/?template=${encodedTemplateId}`;
   }
 </script>
 
@@ -116,7 +129,7 @@
             </div>
             <div class="template-actions">
               <a href={githubSourceUrl(template.templatePath)}>Source</a>
-              <a href={`http://localhost:4310/?template=${template.id}`}>Open in Studio</a>
+              <a href={studioUrl(template.id)}>Open in Studio</a>
             </div>
           </div>
         </article>

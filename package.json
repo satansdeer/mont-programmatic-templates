@@ -12,9 +12,15 @@
     "test:templates": "node scripts/validate-templates.mjs",
     "studio:dev": "pnpm --filter @mont-templates/creator-studio dev",
     "showcase:dev": "pnpm --filter @mont-templates/showcase dev",
-    "registry:build": "node scripts/build-registry.mjs"
+    "registry:build": "node scripts/build-registry.mjs",
+    "netlify:build": "pnpm registry:build && pnpm --filter @mont-templates/showcase build && STUDIO_BASE=/studio/ pnpm --filter @mont-templates/creator-studio build && node scripts/build-netlify-site.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "@usemont/scene-model": "file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz"
+    }
   }
 }

@@ -6,6 +6,7 @@
     "noEmit": false
   },
   "include": [
-    "src/**/*.ts"
+    "src/index.ts",
+    "src/templateTypes.ts"
   ]
 }

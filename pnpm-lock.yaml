@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@usemont/scene-model': file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz
+
 importers:
 
   .:
@@ -48,6 +51,9 @@ importers:
       '@mont-templates/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@usemont/scene-model':
+        specifier: file:../../vendor/usemont-packages/usemont-scene-model-0.0.0.tgz
+        version: file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz
     devDependencies:
       typescript:
         specifier: ^5.9.2
@@ -58,6 +64,12 @@ importers:
       '@babel/parser':
         specifier: ^7.28.4
         version: 7.29.7
+      '@usemont/programmatic-spans':
+        specifier: file:../../vendor/usemont-packages/usemont-programmatic-spans-0.0.0.tgz
+        version: file:vendor/usemont-packages/usemont-programmatic-spans-0.0.0.tgz
+      '@usemont/scene-model':
+        specifier: file:../../vendor/usemont-packages/usemont-scene-model-0.0.0.tgz
+        version: file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz
     devDependencies:
       typescript:
         specifier: ^5.9.2
@@ -602,6 +614,14 @@ packages:
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
+  '@usemont/programmatic-spans@file:vendor/usemont-packages/usemont-programmatic-spans-0.0.0.tgz':
+    resolution: {integrity: sha512-z7Mqmo4gmjVl8JIYML8d+kAuSqlGLCq3+bKERn3qkKYpPmU2RE5LYK19Wb9wqyl9HK8mnNyXY3FxXIz7IQf1Nw==, tarball: file:vendor/usemont-packages/usemont-programmatic-spans-0.0.0.tgz}
+    version: 0.0.0
+
+  '@usemont/scene-model@file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz':
+    resolution: {integrity: sha512-3PUA8KGoVVMGm3aVpSWdXeVngo30jsNuRDvbW1DgfOZ4QVpepIobnfbG2Q2nNGo8BLYw5E2UCp8eCu9vx+4MDQ==, tarball: file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz}
+    version: 0.0.0
+
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
     engines: {node: '>=0.4.0'}
@@ -738,6 +758,10 @@ packages:
   svelte@5.56.1:
     resolution: {integrity: sha512-eArsJmvl3xZVuTYD852PzIEdg2wgDdIZ1NEsIPbzAukHwi284B18No4nK2rCO9AwsWUDza4Cjvmoa4HaojTl5g==}
     engines: {node: '>=18'}
+
+  taffy-layout@2.0.3:
+    resolution: {integrity: sha512-gKR7T3GvdI1itN8ZvMACk739aVXS3bWdNVYfDcKJej02Fl448+hjd8TszlMzV942BtsgHYiGcjSpVjZafeXs8g==}
+    engines: {node: '>=12'}
 
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
@@ -1106,6 +1130,14 @@ snapshots:
 
   '@types/trusted-types@2.0.7': {}
 
+  '@usemont/programmatic-spans@file:vendor/usemont-packages/usemont-programmatic-spans-0.0.0.tgz':
+    dependencies:
+      '@babel/parser': 7.29.7
+      '@usemont/scene-model': file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz
+      taffy-layout: 2.0.3
+
+  '@usemont/scene-model@file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz': {}
+
   acorn@8.16.0: {}
 
   aria-query@5.3.1: {}
@@ -1297,6 +1329,8 @@ snapshots:
       zimmerframe: 1.1.4
     transitivePeerDependencies:
       - '@typescript-eslint/types'
+
+  taffy-layout@2.0.3: {}
 
   tinyglobby@0.2.17:
     dependencies:
