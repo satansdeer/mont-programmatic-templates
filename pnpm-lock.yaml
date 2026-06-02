@@ -54,6 +54,9 @@ importers:
       '@usemont/scene-model':
         specifier: file:../../vendor/usemont-packages/usemont-scene-model-0.0.0.tgz
         version: file:vendor/usemont-packages/usemont-scene-model-0.0.0.tgz
+      svelte:
+        specifier: ^5.39.3
+        version: 5.56.1
     devDependencies:
       typescript:
         specifier: ^5.9.2
