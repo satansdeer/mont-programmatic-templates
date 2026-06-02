@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "procedural-flag-field",
+  "title": "Procedural Flag Field",
+  "kind": "scene",
+  "category": "procedural",
+  "tags": ["procedural", "cloth", "particles", "noise", "draw2d"],
+  "license": "Apache-2.0",
+  "author": "Mont",
+  "reviewStatus": "approved",
+  "ipRisk": "generic",
+  "publishToShowcase": true,
+  "settings": ["headline", "primary", "secondary", "accent", "waveAmplitude", "cellSize"],
+  "tokens": ["backdrop", "fabricLight", "fabricShadow", "accentGlow", "ink"],
+  "thirdPartyAssets": [],
+  "preview": {
+    "thumbnail": "thumbnail.png",
+    "video": "preview.mp4"
+  }
+}

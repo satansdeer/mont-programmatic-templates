@@ -7,6 +7,7 @@
     evaluateProgrammaticSpanFrame,
     type ProgrammaticSpanCompileResult,
     type ProgrammaticSpanLiteral,
+    type ProgrammaticSpanNode,
     type ProgrammaticSpanSetting,
     type ProgrammaticSpanSettings,
     type ProgrammaticSpanSpec,
@@ -102,7 +103,9 @@
     : { visuals: [] as ProgrammaticVisual[], effects: [], diagnostics: [] };
   $: allDiagnostics = [
     ...compileResult.diagnostics,
-    ...(layoutEngineError ? [{ severity: 'warning' as const, message: layoutEngineError }] : []),
+    ...(layoutEngineError && specHasLayoutNode(spec?.root)
+      ? [{ severity: 'warning' as const, message: layoutEngineError }]
+      : []),
     ...frame.diagnostics
   ];
   $: editHandles = spec ? buildEditOverlayHandles(spec.settings, settings, frame.visuals) : [];
@@ -249,6 +252,12 @@
 
   function literalRecord(value: ProgrammaticSpanLiteral | undefined): Record<string, ProgrammaticSpanLiteral> {
     return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  }
+
+  function specHasLayoutNode(node: ProgrammaticSpanNode | undefined): boolean {
+    if (!node) return false;
+    if (node.kind === 'v-stack' || node.kind === 'h-stack' || node.kind === 'bento') return true;
+    return node.children.some((child) => specHasLayoutNode(child));
   }
 
   function finiteNumber(value: ProgrammaticSpanLiteral | undefined, fallback: number): number {
