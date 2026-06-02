@@ -12,12 +12,15 @@
     type ProgrammaticSpanSettings,
     type ProgrammaticSpanSpec,
     type ProgrammaticVisual,
-    type CommunityRegistry
+    type CommunityRegistry,
+    type TemplateAsset
   } from '@mont-templates/runtime';
   import {
     buildEditOverlayConnections,
     buildEditOverlayHandles,
     drawProgrammaticFrameToCanvas,
+    loadTemplateFonts,
+    resolveTemplateAssetUrl,
     type ProgrammaticEditOverlayHandle
   } from '@mont-templates/preview-renderer';
   import TemplatePlayerControls from '@mont-templates/preview-renderer/TemplatePlayerControls.svelte';
@@ -27,6 +30,11 @@
   const templateSourceModules = import.meta.glob('../../../templates/**/template.tsx', {
     eager: true,
     query: '?raw',
+    import: 'default'
+  }) as Record<string, string>;
+  const templateAssetUrlModules = import.meta.glob('../../../templates/**/assets/**/*', {
+    eager: true,
+    query: '?url',
     import: 'default'
   }) as Record<string, string>;
 
@@ -69,6 +77,9 @@
   let playing = false;
   let editMode = false;
   let saveStatus = 'Unsaved';
+  let assetUploadStatus = 'No asset upload yet';
+  let assetLoadRevision = 0;
+  let assetRevision = 0;
   let lastCompiledSource = '';
   let lastSpecId = spec?.id ?? '';
   let canvas: HTMLCanvasElement;
@@ -95,8 +106,12 @@
   });
 
   $: selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? initialTemplate;
+  $: selectedTemplateAssets = templateAssets(selectedTemplate, assetRevision);
   $: if (source !== lastCompiledSource) {
     compileSource();
+  }
+  $: if (selectedTemplate) {
+    void loadSelectedTemplateFonts(selectedTemplate);
   }
   $: frame = spec
     ? evaluateStudioFrame(spec, playheadMs, settings, layoutEngineReady)
@@ -110,11 +125,15 @@
   ];
   $: editHandles = spec ? buildEditOverlayHandles(spec.settings, settings, frame.visuals) : [];
   $: editConnections = buildEditOverlayConnections(editHandles);
-  $: if (canvas && spec) {
+  $: if (canvas && spec && assetLoadRevision >= 0) {
     drawProgrammaticFrameToCanvas(canvas, frame.visuals, {
       width: spec.width,
       height: spec.height,
-      background: '#0f172a'
+      background: '#0f172a',
+      resolveAssetUrl: (assetIdOrUrl) => resolveSelectedTemplateAssetUrl(assetIdOrUrl),
+      onAssetLoad: () => {
+        assetLoadRevision += 1;
+      }
     });
   }
 
@@ -149,6 +168,112 @@
     if (!template) return;
     source = template.source;
     saveStatus = 'Loaded';
+    assetLoadRevision += 1;
+  }
+
+  function templateAssets(template: StudioTemplate | undefined, _revision: number): TemplateAsset[] {
+    return template?.assets ?? [];
+  }
+
+  function resolveSelectedTemplateAssetUrl(assetIdOrUrl: string): string | null {
+    return resolveTemplateAssetUrl(selectedTemplate?.assets, assetIdOrUrl, localAssetUrls(), {
+      devAssetBaseUrl: import.meta.env.DEV ? '/__studio/asset?path=' : undefined
+    });
+  }
+
+  async function loadSelectedTemplateFonts(template: StudioTemplate): Promise<void> {
+    try {
+      await loadTemplateFonts(template.assets, (assetIdOrUrl) => resolveTemplateAssetUrl(template.assets, assetIdOrUrl, localAssetUrls(), {
+        devAssetBaseUrl: import.meta.env.DEV ? '/__studio/asset?path=' : undefined
+      }));
+      assetLoadRevision += 1;
+    } catch (error) {
+      assetUploadStatus = `Font load failed: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  function localAssetUrls(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [path, url] of Object.entries(templateAssetUrlModules)) {
+      const normalized = path.replace(/^\.\.\/\.\.\/\.\.\//, '');
+      out[normalized] = url;
+    }
+    return out;
+  }
+
+  async function uploadAsset(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || !selectedTemplate) return;
+    if (!import.meta.env.DEV) {
+      assetUploadStatus = 'Uploads are available only in local Studio dev mode.';
+      return;
+    }
+    assetUploadStatus = `Uploading ${file.name}...`;
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const response = await fetch('/__studio/upload-asset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manifestPath: selectedTemplate.manifestPath,
+          fileName: file.name,
+          contentType: file.type || contentTypeFromName(file.name),
+          kind: assetKindFromFile(file.name, file.type),
+          dataBase64
+        })
+      });
+      const result = await response.json() as { ok: boolean; asset?: TemplateAsset; error?: string };
+      if (!result.ok || !result.asset) throw new Error(result.error ?? 'Upload failed');
+      selectedTemplate.assets = upsertAsset(selectedTemplate.assets ?? [], result.asset);
+      assetRevision += 1;
+      assetLoadRevision += 1;
+      assetUploadStatus = `Uploaded ${result.asset.id}. Use asset("${result.asset.id}") in TSX.`;
+    } catch (error) {
+      assetUploadStatus = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  function upsertAsset(assets: TemplateAsset[], asset: TemplateAsset): TemplateAsset[] {
+    const rest = assets.filter((item) => item.id !== asset.id);
+    return [...rest, asset].sort((left, right) => left.id.localeCompare(right.id));
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const value = String(reader.result ?? '');
+        resolve(value.includes(',') ? value.split(',').pop() ?? '' : value);
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('Failed to read file.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function assetKindFromFile(name: string, contentType: string): TemplateAsset['kind'] {
+    if (contentType.startsWith('font/') || /\.(woff2?|ttf|otf)$/i.test(name)) return 'font';
+    if (contentType.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(name)) return 'image';
+    if (contentType.startsWith('video/') || /\.(mp4|webm|mov)$/i.test(name)) return 'video';
+    if (/\.json$/i.test(name) || contentType === 'application/json') return 'lottie';
+    if (/\.(glb|gltf)$/i.test(name)) return 'model3d';
+    return 'other';
+  }
+
+  function contentTypeFromName(name: string): string {
+    if (/\.svg$/i.test(name)) return 'image/svg+xml';
+    if (/\.png$/i.test(name)) return 'image/png';
+    if (/\.jpe?g$/i.test(name)) return 'image/jpeg';
+    if (/\.webp$/i.test(name)) return 'image/webp';
+    if (/\.gif$/i.test(name)) return 'image/gif';
+    if (/\.woff2$/i.test(name)) return 'font/woff2';
+    if (/\.woff$/i.test(name)) return 'font/woff';
+    if (/\.glb$/i.test(name)) return 'model/gltf-binary';
+    if (/\.gltf$/i.test(name)) return 'model/gltf+json';
+    if (/\.mp4$/i.test(name)) return 'video/mp4';
+    if (/\.webm$/i.test(name)) return 'video/webm';
+    return 'application/octet-stream';
   }
 
   function updateSetting(id: string, value: ProgrammaticSpanLiteral): void {
@@ -250,6 +375,10 @@
     return setting.type;
   }
 
+  function isMultilineTextSetting(setting: ProgrammaticSpanSetting): boolean {
+    return String(settings[setting.id] ?? setting.default ?? '').includes('\n');
+  }
+
   function literalRecord(value: ProgrammaticSpanLiteral | undefined): Record<string, ProgrammaticSpanLiteral> {
     return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   }
@@ -326,6 +455,37 @@
         {/if}
       </div>
 
+      <details class="settings-panel">
+        <summary>Assets ({selectedTemplateAssets.length})</summary>
+        <div class="asset-tools">
+          <label class="asset-upload">
+            <span>Upload asset</span>
+            <input
+              type="file"
+              accept="image/*,font/*,video/*,.woff,.woff2,.ttf,.otf,.json,.glb,.gltf"
+              disabled={!import.meta.env.DEV}
+              on:change={uploadAsset}
+            />
+          </label>
+          <p>{assetUploadStatus}</p>
+        </div>
+        {#if selectedTemplateAssets.length}
+          <div class="asset-list">
+            {#each selectedTemplateAssets as asset}
+              <div class="asset-item">
+                <div>
+                  <strong>{asset.id}</strong>
+                  <span>{asset.kind}{asset.contentType ? ` · ${asset.contentType}` : ''}</span>
+                </div>
+                <code>asset("{asset.id}")</code>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <div class="empty">No template assets yet</div>
+        {/if}
+      </details>
+
       <details open class="settings-panel">
         <summary>Declarative settings ({spec?.settings.length ?? 0})</summary>
         {#if spec?.settings.length}
@@ -398,6 +558,12 @@
                       </label>
                     {/each}
                   </div>
+                {:else if isMultilineTextSetting(setting)}
+                  <textarea
+                    rows="2"
+                    value={String(settings[setting.id] ?? '')}
+                    on:input={(event) => updateSetting(setting.id, (event.currentTarget as HTMLTextAreaElement).value)}
+                  ></textarea>
                 {:else}
                   <input
                     type="text"

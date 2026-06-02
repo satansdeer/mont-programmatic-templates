@@ -15,6 +15,7 @@ This repository is intended to be public and contribution-friendly. It contains 
 - `templates/scenes` - Full scene templates.
 - `templates/effects` - Motion/effect snippets and presets.
 - `templates/packs` - Curated template packs.
+- `templates/**/assets` - Template-scoped local assets for Studio/tests; approved public assets can also declare Bunny CDN `publicUrl` values in the manifest.
 - `registry` - Generated community registry consumed by Mont and the showcase.
 - `docs` - Authoring, contribution, legal, and review policy docs.
 

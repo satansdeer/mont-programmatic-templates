@@ -16,6 +16,7 @@ Every template must include:
 - `template.tsx`
 - `manifest.json`
 - `README.md`
+- optional `assets/` files declared in `manifest.json`
 - A preview asset, usually `thumbnail.png` and optionally `preview.mp4`
 
 Templates should be generic and brand-safe. Prefer names like `mobile-chat-thread`, `team-chat-board`, or `app-notification-list` instead of names tied to third-party products.
@@ -28,6 +29,7 @@ Maintainers may reject or remove templates that:
 - Use third-party names, logos, marks, icons, screenshots, or proprietary assets.
 - Create confusion about affiliation, sponsorship, or endorsement.
 - Include undisclosed third-party assets.
+- Add asset files without matching manifest `assets` entries and `thirdPartyAssets` disclosure when applicable.
 - Are too brittle, visually broken, inaccessible, or hard for agents to configure.
 
 See `docs/legal-template-policy.md`.

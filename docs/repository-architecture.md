@@ -27,6 +27,8 @@ The public renderer is intentionally narrow. It previews programmatic template v
 
 Creator Studio saves edited files through a dev-only Vite endpoint. The endpoint accepts only `template.tsx`, `manifest.json`, and `README.md` under `templates/scenes`, `templates/components`, `templates/effects`, or `templates/packs`. Static builds are read-only.
 
+Creator Studio also has a dev-only asset upload endpoint. It writes uploaded files only under the selected template's `assets/` folder and updates that template manifest's `assets` list. Public production assets should be mirrored to Bunny CDN and referenced with `assets[].publicUrl`; `assets[].localPath` remains useful for local authoring, tests, and static bundled demos.
+
 ## Generated Registry
 
 `registry/community.json` is generated from template manifests and is intended for consumption by Mont and the showcase.

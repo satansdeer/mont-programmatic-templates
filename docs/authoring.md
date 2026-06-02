@@ -89,6 +89,39 @@ Use text effects when the final layout should be deterministic:
 
 Visual nodes may set render effect props such as `blur`, `shadowColor`, `shadowBlur`, `glowColor`, and `glowBlur`. The public preview renderer supports deterministic placeholders for images, Lottie, and 3D objects; Mont can replace those with the full private media renderer when importing templates.
 
+## Assets
+
+Use `asset("id")` for template media instead of hard-coded file paths. The id must be declared in the template manifest `assets` array.
+
+```tsx
+<Image id="spark" src={asset("spark-sprite")} width={140} height={140} fit="contain" />
+<Text id="title" text="Variable type" fontFamily="InterAsset, Inter, sans-serif" />
+```
+
+Manifest asset records describe how different runtimes resolve the id:
+
+```json
+{
+  "id": "spark-sprite",
+  "kind": "sprite",
+  "contentType": "image/svg+xml",
+  "localPath": "templates/scenes/example/assets/spark-sprite.svg",
+  "publicUrl": "https://cdn.example.com/templates/example/spark-sprite.svg",
+  "license": "Apache-2.0",
+  "source": "Mont"
+}
+```
+
+Resolution rules:
+
+- In Mont, `asset("id")` should resolve only to assets available in the current project or imported template pack.
+- In the public Showcase, `publicUrl` should point at Bunny CDN for approved public assets. If no CDN URL exists yet, static builds can bundle `localPath`.
+- In local Creator Studio, uploaded files are stored under the template's `assets/` folder and the manifest is updated automatically.
+- Font assets may include `fontFamily`, `fontWeight`, `fontStyle`, and `variableAxes`. Studio and Showcase load them before rendering previews.
+- Image/sprite assets render in the public preview. Video, Lottie, and 3D model assets are tracked in manifests now; richer public preview support can be added per media type.
+
+Uploaded assets must be generic or clearly disclosed in `thirdPartyAssets`. Do not upload product screenshots, logos, copied UI, proprietary fonts, or brand trade dress unless the manifest marks the template for review.
+
 ## Procedural.Visual
 
 Use `Procedural.Visual` when a template needs generated motion or geometry that is awkward to describe with static nodes. The render prop is a pure bounded function: it receives Mont's `api` object and returns a serializable frame graph. It must not touch DOM, network, filesystem, timers, ambient randomness, or renderer internals.

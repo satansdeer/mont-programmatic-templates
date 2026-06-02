@@ -12,6 +12,11 @@
     query: '?raw',
     import: 'default'
   }) as Record<string, string>;
+  const templateAssetUrlModules = import.meta.glob('../../../templates/**/assets/**/*', {
+    eager: true,
+    query: '?url',
+    import: 'default'
+  }) as Record<string, string>;
 
   const docs = [
     { title: 'Getting started', body: readme },
@@ -21,6 +26,12 @@
   ];
 
   const communityRegistry = registry as CommunityRegistry;
+  const normalizedTemplateAssetUrls = Object.fromEntries(
+    Object.entries(templateAssetUrlModules).map(([path, url]) => [
+      path.replace(/^\.\.\/\.\.\/\.\.\//, ''),
+      url
+    ])
+  );
 
   const templates = communityRegistry.templates
     .filter((template) => template.publishToShowcase && template.reviewStatus === 'approved' && template.ipRisk === 'generic')
@@ -83,7 +94,7 @@
     </div>
     <div class="template-grid">
       {#each templates as template}
-        <TemplateCard {template} />
+        <TemplateCard {template} assetUrlModules={normalizedTemplateAssetUrls} />
       {/each}
     </div>
   </section>

@@ -2,7 +2,8 @@ import type {
   ProgrammaticSpanLiteral,
   ProgrammaticSpanSetting,
   ProgrammaticSpanSettings,
-  ProgrammaticVisual
+  ProgrammaticVisual,
+  TemplateAsset
 } from '@mont-templates/runtime';
 
 export type ProgrammaticPreviewRenderOptions = {
@@ -10,6 +11,8 @@ export type ProgrammaticPreviewRenderOptions = {
   height: number;
   background?: string;
   devicePixelRatio?: number;
+  resolveAssetUrl?: (assetIdOrUrl: string) => string | null | undefined;
+  onAssetLoad?: () => void;
 };
 
 export type ProgrammaticEditOverlayHandle =
@@ -42,6 +45,55 @@ export type ProgrammaticEditOverlayConnection = {
 };
 
 type Point = { x: number; y: number };
+type CachedImage = {
+  image: HTMLImageElement;
+  status: 'loading' | 'loaded' | 'error';
+};
+
+const imageCache = new Map<string, CachedImage>();
+const loadedFontKeys = new Set<string>();
+
+export function resolveTemplateAssetUrl(
+  assets: TemplateAsset[] | undefined,
+  assetIdOrUrl: string,
+  localAssetUrls: Record<string, string> = {},
+  options: { preferPublicUrl?: boolean; devAssetBaseUrl?: string } = {}
+): string | null {
+  if (!assetIdOrUrl) return null;
+  if (isDirectAssetUrl(assetIdOrUrl)) return assetIdOrUrl;
+  const asset = assets?.find((item) => item.id === assetIdOrUrl);
+  if (!asset) return assetIdOrUrl;
+  if (options.preferPublicUrl && asset.publicUrl) return asset.publicUrl;
+  if (asset.localPath && options.devAssetBaseUrl) {
+    return `${options.devAssetBaseUrl}${encodeURIComponent(asset.localPath)}`;
+  }
+  if (asset.localPath && localAssetUrls[asset.localPath]) return localAssetUrls[asset.localPath];
+  if (asset.publicUrl) return asset.publicUrl;
+  if (asset.localPath) return localAssetUrls[asset.localPath] ?? asset.localPath;
+  return null;
+}
+
+export async function loadTemplateFonts(
+  assets: TemplateAsset[] | undefined,
+  resolveAssetUrl: (assetIdOrUrl: string) => string | null | undefined
+): Promise<void> {
+  if (typeof FontFace === 'undefined' || typeof document === 'undefined' || !document.fonts) return;
+  const fontAssets = (assets ?? []).filter((asset) => asset.kind === 'font' && asset.fontFamily);
+  await Promise.all(fontAssets.map(async (asset) => {
+    const url = asset.id ? resolveAssetUrl(asset.id) : asset.publicUrl ?? asset.localPath;
+    if (!url || !asset.fontFamily) return;
+    const key = `${asset.fontFamily}:${asset.fontWeight ?? '400'}:${asset.fontStyle ?? 'normal'}:${url}`;
+    if (loadedFontKeys.has(key)) return;
+    loadedFontKeys.add(key);
+    const face = new FontFace(asset.fontFamily, `url(${url})`, {
+      weight: asset.fontWeight ?? '400',
+      style: asset.fontStyle ?? 'normal',
+      display: 'swap'
+    });
+    await face.load();
+    document.fonts.add(face);
+  }));
+}
 
 function visualAttribute(
   visual: ProgrammaticVisual,
@@ -76,6 +128,10 @@ function visualAttribute(
     if (proseMirrorText) return proseMirrorText;
   }
   return undefined;
+}
+
+function isDirectAssetUrl(value: string): boolean {
+  return /^(?:https?:|data:|blob:|\/)/.test(value);
 }
 
 function extractProseMirrorText(value: ProgrammaticSpanLiteral | undefined): string {
@@ -114,7 +170,7 @@ export function drawProgrammaticFrameToCanvas(
   context.fillRect(0, 0, options.width, options.height);
 
   for (const visual of [...visuals].sort(compareVisualLayer)) {
-    drawVisual(context, visual);
+    drawVisual(context, visual, options);
   }
 }
 
@@ -184,7 +240,11 @@ export function buildEditOverlayConnections(
   return connections;
 }
 
-function drawVisual(context: CanvasRenderingContext2D, visual: ProgrammaticVisual): void {
+function drawVisual(
+  context: CanvasRenderingContext2D,
+  visual: ProgrammaticVisual,
+  options: ProgrammaticPreviewRenderOptions
+): void {
   context.save();
   const opacity = finiteNumber(visualAttribute(visual, 'opacity'), 1);
   context.globalAlpha *= Math.max(0, Math.min(1, opacity));
@@ -215,7 +275,7 @@ function drawVisual(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
       if (literalString(visualAttribute(visual, 'kind'), '') === 'cursor') {
         drawCursor(context, visual);
       } else {
-        drawMediaPlaceholder(context, visual, 'Image');
+        drawImageVisual(context, visual, options);
       }
       break;
     case 'lottie':
@@ -233,7 +293,7 @@ function drawVisual(context: CanvasRenderingContext2D, visual: ProgrammaticVisua
   }
 
   if (visual.children?.length) {
-    for (const child of visual.children) drawVisual(context, child);
+    for (const child of visual.children) drawVisual(context, child, options);
   }
   context.restore();
 }
@@ -483,6 +543,75 @@ function drawProceduralShaderOverlay(context: CanvasRenderingContext2D, visual: 
   context.fillStyle = '#22d3ee';
   context.fillRect(x + width - 12, y, 2, height);
   context.restore();
+}
+
+function drawImageVisual(
+  context: CanvasRenderingContext2D,
+  visual: ProgrammaticVisual,
+  options: ProgrammaticPreviewRenderOptions
+): void {
+  const x = finiteNumber(visualAttribute(visual, 'x'), 0);
+  const y = finiteNumber(visualAttribute(visual, 'y'), 0);
+  const width = finiteNumber(visualAttribute(visual, 'width'), 200);
+  const height = finiteNumber(visualAttribute(visual, 'height'), 140);
+  const rawSrc = literalString(visualAttribute(visual, 'src'), '');
+  const url = options.resolveAssetUrl?.(rawSrc) ?? rawSrc;
+  if (!url) {
+    drawMediaPlaceholder(context, visual, 'Image');
+    return;
+  }
+  const cached = cachedImage(url, options.onAssetLoad);
+  if (cached.status !== 'loaded') {
+    drawMediaPlaceholder(context, visual, cached.status === 'error' ? 'Missing image' : 'Loading');
+    return;
+  }
+  const fit = literalString(visualAttribute(visual, 'fit'), 'contain');
+  const sourceWidth = cached.image.naturalWidth || cached.image.width || width;
+  const sourceHeight = cached.image.naturalHeight || cached.image.height || height;
+  const box = imageFitBox(x, y, width, height, sourceWidth, sourceHeight, fit);
+  context.drawImage(cached.image, box.x, box.y, box.width, box.height);
+}
+
+function cachedImage(url: string, onAssetLoad: (() => void) | undefined): CachedImage {
+  const existing = imageCache.get(url);
+  if (existing) return existing;
+  const image = new Image();
+  const cached: CachedImage = { image, status: 'loading' };
+  image.crossOrigin = 'anonymous';
+  image.onload = () => {
+    cached.status = 'loaded';
+    onAssetLoad?.();
+  };
+  image.onerror = () => {
+    cached.status = 'error';
+    onAssetLoad?.();
+  };
+  image.src = url;
+  imageCache.set(url, cached);
+  return cached;
+}
+
+function imageFitBox(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  sourceWidth: number,
+  sourceHeight: number,
+  fit: string
+): { x: number; y: number; width: number; height: number } {
+  if (fit === 'stretch' || sourceWidth <= 0 || sourceHeight <= 0) return { x, y, width, height };
+  const scale = fit === 'cover'
+    ? Math.max(width / sourceWidth, height / sourceHeight)
+    : Math.min(width / sourceWidth, height / sourceHeight);
+  const nextWidth = sourceWidth * scale;
+  const nextHeight = sourceHeight * scale;
+  return {
+    x: x + (width - nextWidth) / 2,
+    y: y + (height - nextHeight) / 2,
+    width: nextWidth,
+    height: nextHeight
+  };
 }
 
 function drawMediaPlaceholder(context: CanvasRenderingContext2D, visual: ProgrammaticVisual, label: string): void {

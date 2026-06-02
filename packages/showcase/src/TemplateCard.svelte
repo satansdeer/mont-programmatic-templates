@@ -8,9 +8,14 @@
     type ProgrammaticSpanCompileResult,
     type ProgrammaticSpanSettings,
     type ProgrammaticSpanSpec,
-    type ProgrammaticVisual
+    type ProgrammaticVisual,
+    type TemplateAsset
   } from '@mont-templates/runtime';
-  import { drawProgrammaticFrameToCanvas } from '@mont-templates/preview-renderer';
+  import {
+    drawProgrammaticFrameToCanvas,
+    loadTemplateFonts,
+    resolveTemplateAssetUrl
+  } from '@mont-templates/preview-renderer';
   import TemplatePlayerControls from '@mont-templates/preview-renderer/TemplatePlayerControls.svelte';
 
   type ShowcaseTemplateCardData = {
@@ -19,12 +24,14 @@
     category: string;
     kind: string;
     tags: string[];
+    assets?: TemplateAsset[];
     source: string;
     sourceUrl: string;
     studioUrl: string;
   };
 
   export let template: ShowcaseTemplateCardData;
+  export let assetUrlModules: Record<string, string> = {};
 
   let canvas: HTMLCanvasElement;
   let lastSource = '';
@@ -35,6 +42,7 @@
   let playing = true;
   let layoutEngineReady = false;
   let layoutEngineError = '';
+  let assetLoadRevision = 0;
 
   onMount(() => {
     let cancelled = false;
@@ -54,14 +62,25 @@
   $: if (template.source !== lastSource) {
     compileSource(template.source);
   }
+  $: void loadTemplateFonts(template.assets, (assetIdOrUrl) => resolveTemplateAssetUrl(template.assets, assetIdOrUrl, assetUrlModules, {
+    preferPublicUrl: !import.meta.env.DEV
+  })).then(() => {
+    assetLoadRevision += 1;
+  });
   $: frame = spec
     ? evaluatePreviewFrame(spec, playheadMs, settings, layoutEngineReady)
     : { visuals: [] as ProgrammaticVisual[] };
-  $: if (canvas && spec) {
+  $: if (canvas && spec && assetLoadRevision >= 0) {
     drawProgrammaticFrameToCanvas(canvas, frame.visuals, {
       width: spec.width,
       height: spec.height,
-      background: '#0f172a'
+      background: '#0f172a',
+      resolveAssetUrl: (assetIdOrUrl) => resolveTemplateAssetUrl(template.assets, assetIdOrUrl, assetUrlModules, {
+        preferPublicUrl: !import.meta.env.DEV
+      }),
+      onAssetLoad: () => {
+        assetLoadRevision += 1;
+      }
     });
   }
 

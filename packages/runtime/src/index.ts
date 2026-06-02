@@ -5,7 +5,9 @@ export type {
 } from '@usemont/scene-model';
 export type {
   CommunityRegistry,
+  TemplateAsset,
   TemplateAssetDisclosure,
+  TemplateAssetKind,
   TemplateIpRisk,
   TemplateKind,
   TemplateManifest,

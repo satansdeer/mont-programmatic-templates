@@ -27,6 +27,7 @@ for (const manifest of registry.templates) {
 
   compareSets(`${manifest.id} manifest settings`, manifest.settings, spec.settings.map((setting) => setting.id));
   compareSets(`${manifest.id} manifest tokens`, manifest.tokens, spec.tokens.map((token) => token.id));
+  validateManifestAssets(manifest, manifestPath);
 
   const frame = evaluateProgrammaticSpanFrame(
     spec,
@@ -41,6 +42,7 @@ for (const manifest of registry.templates) {
   if (!frame.visuals.length) {
     failures.push(`${manifest.id}: evaluated frame has no visuals.`);
   }
+  validateFrameAssetRefs(manifest, frame.visuals);
 
   if (manifest.publishToShowcase && manifest.reviewStatus === 'approved' && manifest.ipRisk !== 'generic') {
     failures.push(`${manifest.id}: approved showcase templates must have generic IP risk.`);
@@ -68,6 +70,63 @@ function compareSets(label, manifestItems, specItems) {
   const extra = manifestItems.filter((item) => !specSet.has(item));
   if (missing.length) failures.push(`${label} missing: ${missing.join(', ')}`);
   if (extra.length) failures.push(`${label} extra: ${extra.join(', ')}`);
+}
+
+function validateManifestAssets(manifest, manifestPath) {
+  const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
+  const ids = new Set();
+  const templateFolder = manifestPath.replace(/\/manifest\.json$/, '');
+  for (const asset of assets) {
+    if (!asset || typeof asset !== 'object') {
+      failures.push(`${manifest.id}: asset entries must be objects.`);
+      continue;
+    }
+    if (!asset.id || typeof asset.id !== 'string') {
+      failures.push(`${manifest.id}: asset entry is missing id.`);
+      continue;
+    }
+    if (ids.has(asset.id)) failures.push(`${manifest.id}: duplicate asset id "${asset.id}".`);
+    ids.add(asset.id);
+    if (!new Set(['font', 'image', 'video', 'lottie', 'model3d', 'audio', 'sprite', 'other']).has(asset.kind)) {
+      failures.push(`${manifest.id}: asset "${asset.id}" has unsupported kind "${asset.kind}".`);
+    }
+    if (!asset.localPath && !asset.publicUrl) {
+      failures.push(`${manifest.id}: asset "${asset.id}" needs localPath or publicUrl.`);
+    }
+    if (asset.localPath) {
+      const normalized = String(asset.localPath).replace(/\\/g, '/');
+      if (!normalized.startsWith(`${templateFolder}/assets/`) || normalized.includes('..')) {
+        failures.push(`${manifest.id}: asset "${asset.id}" localPath must stay inside ${templateFolder}/assets/.`);
+      }
+    }
+    if (asset.publicUrl && !/^https:\/\//.test(String(asset.publicUrl))) {
+      failures.push(`${manifest.id}: asset "${asset.id}" publicUrl must be HTTPS.`);
+    }
+  }
+}
+
+function validateFrameAssetRefs(manifest, visuals) {
+  const assetIds = new Set((Array.isArray(manifest.assets) ? manifest.assets : []).map((asset) => asset.id));
+  for (const visual of flattenVisuals(visuals)) {
+    if (!new Set(['image', 'lottie', 'model3d']).has(visual.type)) continue;
+    const attributes = visual.attributes instanceof Map
+      ? Object.fromEntries(visual.attributes.entries())
+      : visual.attributes ?? {};
+    if (attributes.kind === 'cursor') continue;
+    const src = typeof attributes.src === 'string' ? attributes.src : '';
+    if (!src || isDirectAssetUrl(src)) continue;
+    if (!assetIds.has(src)) {
+      failures.push(`${manifest.id}: visual "${visual.id}" references missing asset "${src}".`);
+    }
+  }
+}
+
+function flattenVisuals(visuals) {
+  return visuals.flatMap((visual) => [visual, ...flattenVisuals(visual.children ?? [])]);
+}
+
+function isDirectAssetUrl(value) {
+  return /^(?:https?:|data:|blob:|\/)/.test(value);
 }
 
 function validateStudioSavePath(input) {

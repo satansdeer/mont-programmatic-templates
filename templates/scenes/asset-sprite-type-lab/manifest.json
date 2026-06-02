@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "asset-sprite-type-lab",
+  "title": "Asset Sprite Type Lab",
+  "kind": "scene",
+  "category": "assets",
+  "tags": ["assets", "sprites", "fonts", "type"],
+  "license": "Apache-2.0",
+  "author": "Mont",
+  "reviewStatus": "approved",
+  "ipRisk": "generic",
+  "publishToShowcase": true,
+  "settings": ["headline", "primary", "accent"],
+  "tokens": ["backdrop", "panel", "panelStroke", "primaryGlow", "accentGlow", "ink"],
+  "assets": [
+    {
+      "id": "inter-variable",
+      "kind": "font",
+      "fileName": "inter-variable.woff2",
+      "contentType": "font/woff2",
+      "localPath": "templates/scenes/asset-sprite-type-lab/assets/inter-variable.woff2",
+      "fontFamily": "InterAsset",
+      "fontWeight": "100 900",
+      "fontStyle": "normal",
+      "variableAxes": ["wght"],
+      "license": "SIL OFL 1.1",
+      "source": "Inter typeface"
+    },
+    {
+      "id": "orbit-sprite",
+      "kind": "sprite",
+      "fileName": "orbit-sprite.svg",
+      "contentType": "image/svg+xml",
+      "localPath": "templates/scenes/asset-sprite-type-lab/assets/orbit-sprite.svg",
+      "license": "Apache-2.0",
+      "source": "Mont"
+    },
+    {
+      "id": "spark-sprite",
+      "kind": "sprite",
+      "fileName": "spark-sprite.svg",
+      "contentType": "image/svg+xml",
+      "localPath": "templates/scenes/asset-sprite-type-lab/assets/spark-sprite.svg",
+      "license": "Apache-2.0",
+      "source": "Mont"
+    }
+  ],
+  "thirdPartyAssets": [
+    {
+      "name": "Inter font",
+      "source": "https://rsms.me/inter/",
+      "license": "SIL OFL 1.1",
+      "notes": "Bundled font files are used only for the generic asset-loading demo."
+    }
+  ],
+  "preview": {
+    "thumbnail": "thumbnail.png",
+    "video": "preview.mp4"
+  }
+}
