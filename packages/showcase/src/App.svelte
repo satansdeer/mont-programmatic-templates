@@ -94,7 +94,12 @@
     </div>
     <div class="template-grid">
       {#each templates as template, index}
-        <TemplateCard {template} assetUrlModules={normalizedTemplateAssetUrls} autoplay={index === 0} />
+        <TemplateCard
+          {template}
+          assetUrlModules={normalizedTemplateAssetUrls}
+          autoload={index === 0}
+          autoplay={index === 0}
+        />
       {/each}
     </div>
   </section>

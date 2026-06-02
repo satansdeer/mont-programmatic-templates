@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import {
     compileProgrammaticSpanTsx,
     createDefaultProgrammaticSpanSettings,
@@ -32,6 +32,7 @@
 
   export let template: ShowcaseTemplateCardData;
   export let assetUrlModules: Record<string, string> = {};
+  export let autoload = false;
   export let autoplay = false;
 
   let canvas: HTMLCanvasElement;
@@ -41,38 +42,37 @@
   let settings: ProgrammaticSpanSettings = {};
   let playheadMs = 0;
   let playing = false;
+  let previewActive = autoload;
   let layoutEngineReady = false;
   let layoutEngineError = '';
+  let layoutEngineStarted = false;
   let assetLoadRevision = 0;
   let autoplayStarted = false;
+  let destroyed = false;
 
   onMount(() => {
-    let cancelled = false;
-    ensureProgrammaticSpanLayoutEngineReady()
-      .then(() => {
-        if (cancelled) return;
-        layoutEngineReady = true;
-      })
-      .catch((error) => {
-        if (!cancelled) layoutEngineError = error instanceof Error ? error.message : String(error);
-      });
-    return () => {
-      cancelled = true;
-    };
+    if (previewActive) startLayoutEngine();
   });
 
-  $: if (template.source !== lastSource) {
+  onDestroy(() => {
+    destroyed = true;
+  });
+
+  $: if (previewActive) startLayoutEngine();
+  $: if (previewActive && template.source !== lastSource) {
     compileSource(template.source);
   }
-  $: void loadTemplateFonts(template.assets, (assetIdOrUrl) => resolveTemplateAssetUrl(template.assets, assetIdOrUrl, assetUrlModules, {
-    preferPublicUrl: !import.meta.env.DEV
-  })).then(() => {
-    assetLoadRevision += 1;
-  });
-  $: frame = spec
+  $: if (previewActive) {
+    void loadTemplateFonts(template.assets, (assetIdOrUrl) => resolveTemplateAssetUrl(template.assets, assetIdOrUrl, assetUrlModules, {
+      preferPublicUrl: !import.meta.env.DEV
+    })).then(() => {
+      assetLoadRevision += 1;
+    });
+  }
+  $: frame = previewActive && spec
     ? evaluatePreviewFrame(spec, playheadMs, settings, layoutEngineReady)
     : { visuals: [] as ProgrammaticVisual[] };
-  $: if (canvas && spec && assetLoadRevision >= 0) {
+  $: if (previewActive && canvas && spec && assetLoadRevision >= 0) {
     drawProgrammaticFrameToCanvas(canvas, frame.visuals, {
       width: spec.width,
       height: spec.height,
@@ -85,6 +85,19 @@
       }
     });
     scheduleAutoplayAfterStaticFrame();
+  }
+
+  function startLayoutEngine(): void {
+    if (layoutEngineStarted) return;
+    layoutEngineStarted = true;
+    ensureProgrammaticSpanLayoutEngineReady()
+      .then(() => {
+        if (destroyed) return;
+        layoutEngineReady = true;
+      })
+      .catch((error) => {
+        if (!destroyed) layoutEngineError = error instanceof Error ? error.message : String(error);
+      });
   }
 
   function compileSource(source: string): void {
@@ -117,8 +130,22 @@
   }
 
   function togglePreviewPlayback(): void {
+    if (!previewActive) {
+      activatePreview(true);
+      return;
+    }
     if (!spec) return;
     playing = !playing;
+  }
+
+  function activatePreview(shouldPlay = false): void {
+    previewActive = true;
+    if (shouldPlay) {
+      autoplayStarted = true;
+      requestAnimationFrame(() => {
+        playing = true;
+      });
+    }
   }
 
   function handleCanvasKeydown(event: KeyboardEvent): void {
@@ -130,7 +157,16 @@
 
 <article class="template-card">
   <div class="preview-frame">
-    {#if spec}
+    {#if !previewActive}
+      <button
+        class="preview-placeholder"
+        type="button"
+        aria-label={`Load ${template.title} preview`}
+        on:click={() => activatePreview(true)}
+      >
+        <span>Load preview</span>
+      </button>
+    {:else if spec}
       <canvas
         bind:this={canvas}
         role="button"
@@ -151,7 +187,7 @@
       bind:playheadMs
       bind:playing
       durationMs={spec?.durationMs ?? 1}
-      disabled={!spec}
+      disabled={!previewActive || !spec}
       loop
     />
   </div>
