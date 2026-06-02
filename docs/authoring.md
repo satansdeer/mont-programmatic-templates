@@ -89,6 +89,57 @@ Use text effects when the final layout should be deterministic:
 
 Visual nodes may set render effect props such as `blur`, `shadowColor`, `shadowBlur`, `glowColor`, and `glowBlur`. The public preview renderer supports deterministic placeholders for images, Lottie, and 3D objects; Mont can replace those with the full private media renderer when importing templates.
 
+## Procedural.Visual
+
+Use `Procedural.Visual` when a template needs generated motion or geometry that is awkward to describe with static nodes. The render prop is a pure bounded function: it receives Mont's `api` object and returns a serializable frame graph. It must not touch DOM, network, filesystem, timers, ambient randomness, or renderer internals.
+
+```tsx
+<Procedural.Visual
+  id="generated-field"
+  width={1280}
+  height={720}
+  seed={29}
+  render={(api) => {
+    const layer = api.layer2d("particles");
+    for (let index = 0; index < 80; index += 1) {
+      const x = api.random.range(index, 80, api.width - 80);
+      const y = 240 + Math.sin(api.time.seconds + index) * 28;
+      layer.fill(api.tokens.accent, 0.72).circle(x, y, 5);
+    }
+    return api.frame([layer]);
+  }}
+/>
+```
+
+Supported V1 layers:
+
+- `api.layer2d(id)` for p5-like retained drawing commands: `rect`, `circle`, `ellipse`, `line`, and `text`.
+- `api.mesh2d(id)` for generated triangles and quads, useful for Voronoi-style cells, cloth-like flags, and surfaces.
+- `api.scene3d(id)` for serializable 3D scene proxy objects: boxes, spheres, planes, camera settings, and materials.
+- `api.shader.wgsl({...})` for custom WGSL postprocess layers with serializable uniforms.
+
+Safety and determinism rules:
+
+- Use `api.time.ms`, `api.time.seconds`, and `api.time.normalized`; do not use `Date` or `performance`.
+- Use `api.random.value`, `api.random.range`, and `api.noise`; do not use `Math.random`.
+- Loops must have static numeric bounds. `while` and `do/while` are rejected.
+- The runtime enforces budgets for API calls, visuals, layers, mesh vertices, 3D objects, shader passes, shader source length, and uniform count.
+- Invalid output produces Studio diagnostics and visible placeholders instead of crashing preview.
+
+Shader rules:
+
+- WGSL layers must declare an `@fragment` entry point and return `vec4f` color output.
+- Uniforms must be plain serializable literals.
+- Unbounded loops, storage writes, workgroup memory, atomics, `discard`, and storage buffers are rejected by static checks.
+- Studio and CI validate shader shape before the preview renderer sees it; full GPU execution is a separate renderer integration concern.
+
+Agent authoring guidance:
+
+- Prefer small helper functions and bounded loops over huge literal arrays.
+- Keep all output serializable and finite.
+- Return multiple layers when that makes compositing clear, for example `[mesh, scene, labels, shader]`.
+- Expose high-level settings and derive related colors through tokens; procedural code should read `api.settings` and `api.tokens`.
+
 ## Manifest Reconciliation
 
 Run `pnpm registry:build` after editing manifests and `pnpm test` before submitting. The validator checks that manifest `settings` and `tokens` exactly match the compiled TSX scene, so dead or missing manifest entries are caught early.
