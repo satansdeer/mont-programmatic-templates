@@ -30,11 +30,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm registry:build
-      - run: GITHUB_PAGES=true pnpm --filter @mont-templates/showcase build
+      - run: pnpm pages:build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: packages/showcase/dist
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4

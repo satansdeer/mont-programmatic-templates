@@ -13,7 +13,9 @@
     "studio:dev": "pnpm --filter @mont-templates/creator-studio dev",
     "showcase:dev": "pnpm --filter @mont-templates/showcase dev",
     "registry:build": "node scripts/build-registry.mjs",
-    "netlify:build": "pnpm registry:build && pnpm --filter @mont-templates/showcase build && STUDIO_BASE=/studio/ pnpm --filter @mont-templates/creator-studio build && node scripts/build-netlify-site.mjs"
+    "netlify:build": "pnpm registry:build && pnpm packages:build && pnpm --filter @mont-templates/showcase build && STUDIO_BASE=/studio/ pnpm --filter @mont-templates/creator-studio build && node scripts/build-netlify-site.mjs",
+    "packages:build": "pnpm --filter @mont-templates/runtime build && pnpm --filter @mont-templates/template-sdk build && pnpm --filter @mont-templates/preview-renderer build",
+    "pages:build": "pnpm registry:build && pnpm packages:build && GITHUB_PAGES=true pnpm --filter @mont-templates/showcase build && STUDIO_BASE=/mont-programmatic-templates/studio/ pnpm --filter @mont-templates/creator-studio build && node scripts/build-netlify-site.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.2"
