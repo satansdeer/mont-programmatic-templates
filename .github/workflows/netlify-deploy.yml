@@ -25,7 +25,7 @@ jobs:
       - run: pnpm netlify:build
       - name: Deploy to Netlify
         run: >-
-          pnpm dlx netlify-cli deploy
+          pnpm --package=netlify-cli dlx netlify deploy
           --prod
           --dir dist
           --site "$NETLIFY_SITE_ID"
