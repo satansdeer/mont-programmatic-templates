@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "abstract-print",
+  "title": "Abstract Print",
+  "description": "Looping organic cutouts with black ink contours, offset green, orange, purple and gray fills, and textured off-white paper. Native procedural shader; no text or audio.",
+  "kind": "scene",
+  "category": "abstract",
+  "width": 1080,
+  "height": 1920,
+  "durationMs": 8000,
+  "tags": [
+    "abstract",
+    "procedural",
+    "organic",
+    "print",
+    "vertical",
+    "no-text",
+    "loop"
+  ],
+  "license": "Apache-2.0",
+  "author": "Mont",
+  "reviewStatus": "approved",
+  "ipRisk": "generic",
+  "publishToShowcase": true,
+  "settings": [],
+  "tokens": [],
+  "thirdPartyAssets": [],
+  "preview": {
+    "thumbnail": "assets/poster.png",
+    "posterTimeMs": 4000,
+    "thumbnailPublicUrl": "https://mont-public-1.b-cdn.net/programmatic-templates/posters/abstract-print/poster.png",
+    "videoPublicUrl": "https://mont-public-1.b-cdn.net/programmatic-templates/previews/abstract-print/preview.mp4"
+  }
+}
