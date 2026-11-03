@@ -14,7 +14,7 @@
     "@mont-templates/runtime": "workspace:*",
     "@mont-templates/template-sdk": "workspace:*",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
-    "vite": "^6.3.6",
+    "vite": "^6.4.5",
     "svelte": "^5.39.3"
   },
   "devDependencies": {
