@@ -89,6 +89,8 @@ Use text effects when the final layout should be deterministic:
 
 Visual nodes may set render effect props such as `blur`, `shadowColor`, `shadowBlur`, `glowColor`, and `glowBlur`. The public preview renderer supports deterministic placeholders for images, Lottie, and 3D objects; Mont can replace those with the full private media renderer when importing templates.
 
+Native `api.shader.wgsl` fragment outputs use straight-alpha **linear sRGB**. Decode sRGB palette colors (including hex/8-bit RGB colors) before returning them; the renderer's sRGB target applies the storage transfer conversion. Do not gamma-convert alpha. If a shader mixes palette colors or adds paper grain in authored sRGB space, decode the final RGB once, as in `abstract-print`.
+
 ## Assets
 
 Use `asset("id")` for template media instead of hard-coded file paths. The id must be declared in the template manifest `assets` array.

@@ -64,6 +64,11 @@ fn cutout(position: vec2f, seed: f32, scale: f32, threshold: f32, phase: f32, fi
   return color;
 }
 
+// Authored palette and paper grain are sRGB; shader outputs must be linear.
+fn decode_srgb(encoded: vec3f) -> vec3f {
+  return select(encoded / 12.92, pow((encoded + vec3f(0.055)) / 1.055, vec3f(2.4)), encoded > vec3f(0.04045));
+}
+
 @fragment
 fn main(@builtin(position) position: vec4f) -> @location(0) vec4f {
   let phase = fract(uniforms.progress) * TAU;
@@ -75,7 +80,7 @@ fn main(@builtin(position) position: vec4f) -> @location(0) vec4f {
   color = cutout(position.xy, 4.0, 270.0, 0.065, phase, vec3f(226.0, 81.0, 12.0) / 255.0, color);
   let grain = (hash21(floor(position.xy)) - 0.5) * 0.045;
   let fibers = (noise(position.xy * vec2f(0.13, 0.8)) - 0.5) * 0.018;
-  return vec4f(clamp(color + grain + fibers, vec3f(0.0), vec3f(1.0)), 1.0);
+  return vec4f(decode_srgb(clamp(color + grain + fibers, vec3f(0.0), vec3f(1.0))), 1.0);
 }`
           })
         ])} />
